@@ -1,0 +1,32 @@
+id: patch-singular-schema
+language: JavaScript
+severity: warning
+message: >-
+  补丁条目用了 singular schema（patterns / replace / marker）。新条目一律用
+  plural（replacements:[{pattern,replace}] + markers:[]），存量 7 条按 PATCH-4 迁移。
+note: |
+  singular 与 plural 并存 = 两种状态语义。core.js 的 patchReplacements() 里有一层
+  兼容分支（`return (p.patterns ?? []).map(...)`），迁移完应删除。
+
+  存量 7 条（实测，PATCH-4 的迁移清单）：
+  id 5  APPROVAL_NEVER_SENTENCE
+  id 6  SANDBOX_DENY_FILE_WRITE
+  id 7  SANDBOX_MODE_DEFAULT
+  id 8  APPROVAL_POLICY_DEFAULT
+  id 10 APPROVAL_CONFIG_DEFAULT_NEVER
+  id 15 SANDBOX_CONFINE_PASSTHROUGH
+  id 16 FS_FENCE_DISABLED
+
+  这条规则的命中数就是迁移进度：7 → 0。
+files:
+  - "lib/core.js"
+  # 补丁表搬到 lib/patch/table.js。本规则数的是「singular schema 还剩几条」，
+  # 那 7 条现在住在 table.js 里 —— 不跟着扫，这条规则的命中数会永远是 0，
+  # 看起来「迁移完成」，实际是扫错了地方。
+  - "lib/patch/*.js"
+rule:
+  kind: pair
+  all:
+    - has:
+        kind: property_identifier
+        regex: '^patterns$'

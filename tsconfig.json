@@ -1,0 +1,43 @@
+{
+  // JSDoc + checkJs：只覆盖新产出的目录。
+  //
+  // 为什么不上 TypeScript：CONTRACT-3 是硬红线（运行时零 dependencies），
+  // 而 checkJs 能在**不改一行运行时**的前提下把「字段拼错 / 可选性误用」
+  // 变成编译期错误 —— 这正是补丁表 19 字段 × 82 实例最需要的安全网。
+  //
+  // 覆盖范围（1.2.1 校正）：patch/ host/ prompt/ shim/ 四个目录。
+  // 曾经还列过 `lib/hostfs/`，一个执行方案里的目标结构，实际从未创建
+  // （实际产出的是 lib/client-src/，而那是文本装配的片段、不是 ESM 模块，
+  // 不适合 checkJs），1.2.1 整体修复时删掉这条惰性配置。
+  //
+  // 为什么不覆盖老代码：core.js / index.js / redteam 都还没有 JSDoc，
+  // 一次性打开会得到几千条 implicit-any 噪音，最后必然被忽略。
+  // 新目录是「现在就在写、以后还要改」的部分，从它们开始。
+  "compilerOptions": {
+    "checkJs": true,
+    "noEmit": true,
+    "allowJs": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "es2022",
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "strict": false,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  },
+  "include": [
+    "lib/patch/",
+    "lib/host/",
+    "lib/prompt/",
+    "lib/shim/"
+  ],
+  "exclude": [
+    // 数据字面量对类型检查无意义：3482 行纯对象数组，checkJs 只会在
+    // 82 条补丁上逐个推导字面量类型，慢且零收益。
+    "lib/patch/table.js"
+  ]
+}

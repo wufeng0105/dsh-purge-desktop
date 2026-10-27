@@ -1,0 +1,56 @@
+# 不上传
+node_modules/
+*.tgz
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+
+# 只给本机 Cursor 技能看，不进仓库
+docs/agents/
+
+# codegraph 的索引库与守护进程文件是本机缓存，不进仓库
+.codegraph/
+
+# 本地草稿，不进仓库
+scripts/tmp-*.mjs
+scripts/test-*.mjs
+.scratch/
+dsh-redteam-mode-main/
+/1
+
+# 外部参考，不是本插件
+choirboy-prompt/
+/choirboy-prompt/
+_archive/
+频道推广手册/
+
+# 嵌入前的提示词原文
+#
+# lib/default-prompt-inject.md **已纳入版本库**（S1）。
+# 它是 scripts/embed-default-prompt.mjs 的唯一输入，被 ignore 会让干净 checkout
+# 上直接抛 `Error: missing local source`，生成链在 CI 里根本跑不起来。
+# 它本来就已经是产品的一部分（asset-table.js 解密出来的就是它），
+# 而密钥（table-key.js 的 mixKey 固定盐）也在仓库里 ——
+# 所以那个"加密槽"是混淆不是保护，藏明文没有意义。
+lib/default-prompt-inject.md.bak
+lib/default-prompt-inject.zh.md
+lib/default-prompt-inject.en.md
+# 只忽略仓库根目录的同名文件；不带前导 / 会连 lib/ 下的一起匹配
+/default-prompt-inject.md
+
+# 本机官方安装包、解包目录、拆出的压缩包
+/deepseek-harness-*.exe
+/official-harness-unpacked/
+/official-harness-payload.7z
+*.asar
+*.asar.bak
+
+# 临时文件（一次性提取脚本 / 换版本验证用的产物副本 / commit message 草稿）
+.tmp-*
+
+# 本地诊断快照（purge_status 抓的现场），不进库
+/preview/
+
+# 判据证据（`gates/`）随改造轮退役：192 份 WP1–WP35 的输出整份删除，
+# 拍板 Q-1 的破例规则一并撤销。要复核那一轮，证据在 git 历史里（`git log -- gates/`）。

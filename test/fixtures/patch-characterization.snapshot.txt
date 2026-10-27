@@ -1,0 +1,82 @@
+# dsh-purge 补丁引擎 characterization 快照
+#
+# 列：id | name | 已应用态 | 待应用态 | 无关文本 | pattern_not_found 判定 | strictFiles
+#
+# 生成：test/patch-characterization.test.mjs（见文件头注释）
+# 更新：$env:DSH_PURGE_UPDATE_SNAPSHOT=1; node --test test/patch-characterization.test.mjs
+#
+# 这个文件是补丁引擎唯一的行为基线。改语义时它必须逐行不变 ——
+# 有意改的改动（改 onMiss / 改 strictFiles / 增删补丁）才允许出现差异。
+
+  1 | WORKSPACE_CONTEXT_INTRO | applied | pending | skipped | fail | -
+  2 | REPLACEMENT_WORKSPACE_CONTEXT_INTRO | applied | pending | skipped | fail | -
+  3 | SCOPE_INTRO | applied | - | skipped | fail | -
+ 70 | PRESET_SHELL_NETWORK | applied | pending | skipped | fail | strict
+ 73 | PRESET_BASH_MIRROR_LINE | applied | - | skipped | soft | -
+  6 | SANDBOX_DENY_FILE_WRITE | applied | pending | skipped | fail | strict
+  7 | SANDBOX_MODE_DEFAULT | applied | pending | skipped | fail | strict
+ 11 | APPROVAL_NEVER_SENTENCE_BYPASS | applied | pending | applied | soft | -
+ 12 | APPROVAL_ASK_SENTENCE_BYPASS | applied | pending | applied | soft | -
+ 13 | ESCALATION_WIDENING_EXEMPT | applied | pending | skipped | fail | strict
+ 14 | ESCALATION_GRANT_UNCONDITIONAL | applied | pending | skipped | fail | strict
+ 15 | SANDBOX_CONFINE_PASSTHROUGH | applied | pending | skipped | fail | strict
+ 16 | FS_FENCE_DISABLED | applied | pending | skipped | fail | strict
+ 17 | FS_OBSERVATION_INTENT_FREE | applied | pending | skipped | fail | strict
+ 18 | REPEAT_TOOL_REMINDER_DISABLED | applied | pending | skipped | fail | -
+ 19 | TOOL_RESULT_PRUNER_DISABLED | applied | pending | skipped | fail | -
+ 21 | BASH_TIMEOUT_RESTORE | applied | - | applied | soft | -
+ 22 | READ_CAPS_RAISED | applied | pending | skipped | fail | -
+ 23 | SUBAGENT_MAXDEPTH_RAISED | applied | pending | skipped | fail | -
+ 24 | PRESET_FETCH_ENABLED | applied | pending | skipped | fail | -
+ 25 | HARNESS_IDENTITY_STRIP | applied | pending | applied | soft | -
+ 26 | MINIMAL_PERSONA_PURGE | applied | pending | applied | soft | -
+ 29 | TOOL_WEB_UNTRUSTED_NEUTRAL | applied | pending | skipped | soft | -
+ 33 | TOOL_SHELL_DENIAL_PROMPT | applied | pending | skipped | soft | -
+ 34 | SANDBOX_HINT_NEUTRAL | applied | pending | skipped | fail | -
+ 35 | ESCALATION_NEVER_REJECT | applied | pending | skipped | fail | strict
+ 36 | TOOL_FS_ESCALATION_SCHEMA | applied | pending | skipped | soft | -
+ 37 | SUBAGENT_SCOPE_LOCK_NEUTRAL | applied | pending | skipped | soft | -
+ 92 | SUBAGENT_SAME_INJECT_PATH | applied | pending | skipped | fail | strict
+ 39 | SESSION_V0_PLUGIN_SUMMARY_ALIAS | applied | pending | skipped | fail | -
+ 40 | COMPLETE_PROMPT_KEEP_INJECT | applied | pending | skipped | fail | -
+ 42 | SETTINGS_LEGACY_API | applied | pending | skipped | fail | -
+ 46 | OFFICIAL_DESKTOP_UPDATE_ASCII | applied | pending | skipped | soft | -
+ 47 | ANTHROPIC_OAUTH_NO_CLAUDE_IDENTITY | applied | pending | skipped | soft | -
+ 48 | TOOL_SHELL_DELETE_MOVE_NEUTRAL | applied | pending | applied | soft | -
+ 49 | ANTHROPIC_OAUTH_CLI_NEUTRAL | applied | pending | skipped | soft | -
+ 50 | SESSION_REFERENCE_FRAMING_NEUTRAL | applied | pending | skipped | soft | -
+ 51 | FRESH_SESSION_FULL_ACCESS | applied | pending | skipped | fail | strict
+ 52 | SESSION_LOG_UPLOAD_DEFAULT_OFF | applied | pending | skipped | soft | -
+ 54 | DELIVERABLE_DO_NOT | applied | pending | skipped | soft | -
+ 55 | SYSTEM_PROMPT_REPLACE_HEAD | applied | pending | skipped | fail | -
+ 74 | ASSEMBLE_BEFORE_PRESTEP | applied | pending | skipped | fail | -
+ 66 | SYSTEM_PROMPT_RENDER_GUARD | applied | pending | skipped | fail | -
+ 83 | DESKTOP_HOST_CLOSE_NO_FATAL | applied | pending | skipped | fail | -
+ 84 | DESKTOP_HOST_CLOSE_CODE0_NO_FAIL | applied | pending | skipped | soft | -
+ 67 | AGENT_LOOP_MESSAGES_GUARD | applied | pending | skipped | fail | -
+ 68 | SYSTEM_NODES_CONTENT_GUARD | applied | pending | skipped | fail | -
+ 69 | MODEL_STREAM_RELEASE | applied | pending | skipped | soft | -
+ 72 | MESSAGES_SYSTEM_CURRENT | applied | pending | skipped | soft | -
+ 56 | REWIND_HIDE_CUT_ONLY | applied | pending | skipped | soft | -
+ 75 | REWIND_RESET_TODOS | applied | pending | skipped | soft | -
+ 57 | DEEPSEEK_SYSTEM_ROLE | applied | pending | skipped | soft | -
+ 58 | REWIND_SKIP_DERIVE | applied | pending | skipped | soft | -
+ 59 | OFFICIAL_AUTO_REVIEW_PASSTHROUGH | applied | pending | skipped | soft | -
+ 60 | OFFICIAL_RUN_CODE_APPROVAL_NEUTRAL | applied | pending | skipped | soft | -
+ 61 | OFFICIAL_SANDBOX_POLICY_NEUTRAL | applied | pending | skipped | soft | -
+ 62 | OFFICIAL_TOOL_ASK_FAILOPEN | applied | pending | skipped | soft | -
+ 63 | OFFICIAL_PLAN_MODE_NEUTRAL | applied | pending | skipped | soft | -
+ 78 | OVERLAY_RESTORE_FROM_BAK | applied | pending | skipped | soft | -
+ 82 | DESKTOP_SHELL_PROFILE_FALLBACK | applied | pending | skipped | soft | -
+ 85 | SESSION_PROMPT_STEER_INTERRUPT | applied | pending | skipped | soft | -
+ 86 | SESSION_QUEUE_STEER_INTERRUPT | applied | pending | skipped | soft | -
+ 87 | PREPARE_ASSEMBLE_USE_RETURNED | applied | pending | skipped | soft | -
+ 89 | SYSTEM_FIELD_EXTRACT | applied | pending | skipped | soft | -
+ 90 | OPENAI_NATIVE_SYSTEM_ROLE | applied | pending | skipped | soft | -
+ 91 | ANTHROPIC_NATIVE_PARAMS_SYSTEM | applied | pending | skipped | soft | -
+
+# 合计 66 条
+# pattern_not_found 判 soft（静默失效） 37 条
+# strictFiles 必中 11 条
+# 无字面量 pattern（快照判不了 pending） 3 条
+# 无关文本仍判 applied（布局软补丁） 6 条 —— 这些 id 是：11, 12, 21, 25, 26, 48

@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wufeng0105/dsh-purge-desktop/architecture/audit.schema.json",
+  "title": "dsh-purge 审计日志事件",
+  "description": "schema:2。结论层与文件层事件必须带 layer，证据只允许两种形态：文件探针（file+marker+hits+bytes，可带首个命中的字节偏移 offset 与 before/after 摘要）或引用前序事件（refSeq）。禁止 {\"ok\":true} 这类自述。只追加、带 seq、按天轮转、单文件 10MB 上限、保留 30 天、不进 Session 事件流。v2 新增 recordId / runId / observedTs 三字段：v1 旧日志没有它们，读侧必须容忍无这三字段的旧行；写侧由存储层分配 recordId、落账方提供 runId 与 observedTs。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ts", "seq", "event", "result", "evidence"],
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?(?:Z|[+-]\\d{2}:\\d{2})$",
+      "description": "带时区的 ISO 8601 时刻（落盘时刻）。必须含偏移量（Z 或 ±hh:mm），不接受本地裸时间。"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "单调递增序号，每个日志文件内从 0 起。追加即分配，不复用、不回填。"
+    },
+    "recordId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "v2。行级 uuid，由存储层在落盘时分配。seq 每个文件从 0 起，跨文件定位一行只能靠它。v1 旧行无此字段。"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "v2。一次运行尝试的标识（如 apply-20261023T214012Z-ab12），同一次尝试的全部事件共用。v1 旧行无此字段；事件层事件（非 apply 落账）可缺席。"
+    },
+    "observedTs": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?(?:Z|[+-]\\d{2}:\\d{2})$",
+      "description": "v2。证据观测时刻，与 ts（落盘时刻）分开；两者差值是审计管道自身的写入积压信号。v1 旧行无此字段。"
+    },
+    "event": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9-]*)+$",
+      "enum": [
+        "cli.invoke",
+        "code.apply-result",
+        "code.patch-applied",
+        "code.patch-miss",
+        "code.patch-skipped",
+        "code.probe",
+        "prompt.apply-result",
+        "prompt.patch-applied",
+        "prompt.patch-miss",
+        "prompt.patch-skipped",
+        "route.reject",
+        "tool.apply-result",
+        "tool.loaded",
+        "tool.patch-applied",
+        "tool.patch-miss",
+        "tool.patch-skipped"
+      ],
+      "description": "点分事件名。取值受 lib/audit/vocabulary.js 的 EVENT_NAMES 约束（本 enum 是它的镜像，改一处必须同时改另一处）；写侧不在词表里直接抛错。结论层事件（*.apply-result）必须带 layer。"
+    },
+    "result": {
+      "type": "string",
+      "enum": ["ok", "fail", "skip", "partial"],
+      "description": "四态。partial 有两种来源：层内结论不全是 ok（有成功也有跳过），或 detail.completeness 有假项；后者不许记成 ok / skip，记不全时层里有 miss 则保持 fail（失败比记不全更严重）。"
+    },
+    "layer": {
+      "type": "string",
+      "enum": ["prompt", "code", "tool"],
+      "description": "结论层（*.apply-result）与文件层（*.patch-*）事件必填。事件层（如 route.reject、cli.invoke）不填。哪一层的判断，就只有那一层的证据。"
+    },
+    "evidence": {
+      "description": "证据。只允许两种形态，二选一。",
+      "oneOf": [
+        { "$ref": "#/$defs/fileEvidence" },
+        { "$ref": "#/$defs/refEvidence" }
+      ]
+    },
+    "actor": {
+      "type": "string",
+      "enum": ["host", "client", "cli", "subagent"],
+      "description": "谁写的这一行。`cli` = 命令行进程自己写的，`host` = 宿主进程里的 http / command / tool 三个入口写的。不许恒为同一个值：恒为 host 的 actor 等于没有这一列。"
+    },
+    "entry": {
+      "type": "string",
+      "maxLength": 32,
+      "description": "哪个入口触发的这一轮（`cli` / `http` / `command` / `tool`，取值集合与诊断轨的 entry 同一批）。它是「诊断轨被轮转覆盖之后仍答得出谁触发」的唯一来源，所以必须落在审计行自己身上，不许只留在另一份文件里。"
+    },
+    "target": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "被作用对象的路径、座位名或 op 名。不含凭据。"
+    },
+    "detail": {
+      "type": "object",
+      "description": "事件专属的补充字段。禁止在这里放自述性布尔（如 ok / success / worked）。apply-result 的 detail.completeness{patches, files, layers} 记录「这次记全了没有」，任一为假该事件 result 不许是 ok / skip；detail.exempt 列出审计不适用（PATCH-9，migration-only 无证据是设计使然）的补丁 id —— 豁免单独列示，不许静默消失。detail.considered（折进来的补丁号）与 detail.expectedRows（声明的落点行数）是 completeness 的分母：写进日志本身，第三方只读这一行就能复算三项布尔，不必相信落账方。detail.partialReason 只许取 layer（层内部分成功）/ record（记录缺口），且只许出现在 result=partial 的结论上。",
+      "additionalProperties": true
+    }
+  },
+  "allOf": [
+    {
+      "description": "结论层（带 layer）的事件，event 首段必须是该层名，避免 layer 与 event 各自表述。",
+      "if": { "required": ["layer"] },
+      "then": {
+        "properties": {
+          "event": { "pattern": "^(prompt|code|tool)\\.[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)*$" }
+        }
+      }
+    },
+    {
+      "description": "结论层事件（{layer}.apply-result 这一族）必须带 layer：层结论不带层名，事后分不清这条结论是替哪一层下的。与 lib/audit/events.js 的写侧校验同一条规则。",
+      "if": {
+        "required": ["event"],
+        "properties": { "event": { "pattern": "\\.apply-result$" } }
+      },
+      "then": { "required": ["layer"] }
+    },
+    {
+      "description": "文件层事件（{layer}.patch-* 这一族）必须带 layer：同一后缀在三个层里都合法，不带层名分不清这条探针替哪一层取证。与 lib/audit/events.js 的写侧校验同一条规则。",
+      "if": {
+        "required": ["event"],
+        "properties": { "event": { "pattern": "\\.patch-(?:applied|miss|skipped)$" } }
+      },
+      "then": { "required": ["layer"] }
+    },
+    {
+      "description": "结论层事件里 detail.completeness 任一项为假时，result 只能是 partial 或 fail：绿结论不许盖住记录缺口（fail 比 partial 严重，记不全时层里有 miss 保持 fail）。与 lib/audit/events.js 的写侧校验同一条规则。",
+      "if": {
+        "required": ["event", "detail"],
+        "properties": {
+          "event": { "pattern": "\\.apply-result$" },
+          "detail": {
+            "required": ["completeness"],
+            "properties": {
+              "completeness": {
+                "type": "object",
+                "anyOf": [
+                  { "required": ["patches"], "properties": { "patches": { "const": false } } },
+                  { "required": ["files"], "properties": { "files": { "const": false } } },
+                  { "required": ["layers"], "properties": { "layers": { "const": false } } }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": { "properties": { "result": { "enum": ["partial", "fail"] } } }
+    }
+  ],
+  "$defs": {
+    "fileEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "marker", "hits", "bytes"],
+      "description": "文件探针证据：在哪个文件的哪个 marker 上命中几次、该文件多少字节。四个字段缺一不可，缺任何一项都无法复核。每个可选属性都必须有写入方（当前为 lib/audit/report.js 的探针），没有写入方的属性不留。",
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "绝对路径或相对仓库根路径。指向 asar 内部时必须写 asar 内路径。"
+        },
+        "marker": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "被搜索的字面量。不许写正则（正则的命中数随引擎版本漂移）。"
+        },
+        "hits": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "该字面量在文件中的出现次数。0 是合法值，表示「已应用后 pattern 不再命中」或「未命中」。"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "该文件字节数。用于区分「文件不存在」与「文件在但内容是空的」。"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "首个命中的字节偏移（UTF-8 字节，不是字符下标）。有它就能直接跳到那一行复核；hits=0 时不写这个键——没有命中就没有偏移可言。"
+        },
+        "before": {
+          "type": ["object", "null"],
+          "description": "v2。apply 前的内容摘要。null 表示那一侧读不到（如文件还在密封 asar 里）；键缺席表示调用方没有采集。",
+          "required": ["sha256", "bytes"],
+          "additionalProperties": false,
+          "properties": {
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "bytes": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "after": {
+          "type": ["object", "null"],
+          "description": "v2。探针当场的文件内容摘要；null 表示落账时读不到该文件。",
+          "required": ["sha256", "bytes"],
+          "additionalProperties": false,
+          "properties": {
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "bytes": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "refEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["refSeq"],
+      "description": "引用前序事件：本条结论建立在另一条已落盘的事件上。只在同一个日志文件内引用；跨天 / 跨轮转时的引用链仍会断在本条所在文件里，这是已知缺口（落账方拿不到被引事件落在哪个文件，存储层也没有把文件名交回来）。",
+      "properties": {
+        "refSeq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "被引用事件的 seq。必须已存在且早于本条。"
+        },
+        "quote": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "可选。被引用事件的 event 名，便于人读时不必回查。"
+        }
+      }
+    }
+  },
+  "x-dsh-purge": {
+    "schemaVersion": 2,
+    "storage": {
+      "kind": "jsonl-append",
+      "path": "<DSH_HOME>/dsh-purge/audit/YYYY-MM-DD.jsonl",
+      "rotation": "daily",
+      "maxFileBytes": 10485760,
+      "retainDays": 30,
+      "appendOnly": true,
+      "inSessionEventStream": false
+    },
+    "queries": {
+      "route": "GET /dsh-purge/audit?tail=20&layer=code&event=code.&runId=<id> 或 /dsh-purge/audit?why=<seq>",
+      "tail": "读最新 N 条，按 seq 倒序输出；参数 n（默认 50，上限 1000）、layer（可选）、event（可选前缀）、runId（可选，v1 旧行无 runId 自然排除）",
+      "why": "给定 seq 或 event 名，回溯它的证据链：本条 → evidence.refSeq → 被引事件，直到落到 file 证据或链尾"
+    },
+    "forbidden": [
+      "evidence 里出现 {\"ok\": true} / {\"success\": true} / {\"worked\": true} 这类自述",
+      "结论层事件缺 layer 字段",
+      "文件层事件（*.patch-*）缺 layer 或 runId",
+      "completeness 有假项却把层结论记成 ok / skip",
+      "event 不在 lib/audit/vocabulary.js 的词表里",
+      "把日志写进 Session 事件流",
+      "重写或删除已落盘的行",
+      "ts 不带时区偏移",
+      "v2 写入侧省略 recordId（存储层强制分配，入参自带也会被拒）"
+    ]
+  },
+  "examples": [
+    {
+      "ts": "2026-10-23T18:15:05.412+08:00",
+      "seq": 0,
+      "recordId": "b41f0c7e-9a52-4f13-8a6e-2d7c1e5b9f04",
+      "runId": "apply-20261023T214012Z-7f1a",
+      "observedTs": "2026-10-23T18:15:05.401+08:00",
+      "event": "code.patch-applied",
+      "result": "ok",
+      "layer": "code",
+      "actor": "host",
+      "target": "dsh-agent-instructions/lib/index.js",
+      "evidence": {
+        "file": "resources/app/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js",
+        "marker": "ACTIVE and MANDATORY",
+        "hits": 1,
+        "bytes": 48213,
+        "offset": 12094,
+        "before": { "sha256": "3f2a1e0d5c8b7a6f4e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f", "bytes": 47998 },
+        "after": { "sha256": "9d2e8f1c4b7a3e6d0f5c2b8a1e7d4c9b6f3a0e5d8c2b7f4a1e6d9c0b3a5f8e2d", "bytes": 48213 }
+      },
+      "detail": { "patchId": 12, "status": "applied" }
+    },
+    {
+      "ts": "2026-10-23T18:15:06.003+08:00",
+      "seq": 1,
+      "recordId": "c52f1d8e-8b63-4a24-9f7d-3e8c6b5a4d32",
+      "runId": "apply-20261023T214012Z-7f1a",
+      "observedTs": "2026-10-23T18:15:05.401+08:00",
+      "event": "tool.apply-result",
+      "result": "partial",
+      "layer": "tool",
+      "actor": "host",
+      "target": "tool",
+      "evidence": {
+        "refSeq": 0,
+        "quote": "code.patch-applied"
+      },
+      "detail": {
+        "applied": 8,
+        "failed": 0,
+        "skipped": 0,
+        "unresolved": [89],
+        "completeness": { "patches": false, "files": true, "layers": true }
+      }
+    }
+  ]
+}

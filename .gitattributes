@@ -1,0 +1,28 @@
+# 行尾策略 —— 对应 docs/约束索引.md 的 REPO-1 / REPO-2
+#
+# 为什么需要这个文件（实测在 release-notes.md 和 AGENTS.md 的行尾漂移里都出现过）：
+#
+# REPO-1：lib/patch/table.js 的 blob 每行都是 CRLF，而它的
+#   **135 个多行字符串字面量全部内含 CR** —— 行尾落在字面量内部，
+#   是补丁替换正文的一部分。归一成 LF 会静默改变写进宿主文件的内容。
+#   实测对照（.tmp-repair/eol-renormalize-ab.mjs）：
+#     • 无属性时 `git add --renormalize` → 暂存 diff 3484 增 / 3482 删，索引从 i/crlf 翻成 i/lf
+#     • 有 `-text` 时同一命令         → 暂存 diff 2 行，索引保持 i/crlf
+#   注意：普通 `git add` / `git diff` 不触发（git 不主动规范化已按 CRLF 提交的文件），
+#   触发条件是显式 renormalize，或任何让工作区变成 LF 的检出配置。
+#   不要改用 `binary`：那等于 `-text -diff`，会连 diff 一起关掉，看不到改动。
+#
+# REPO-2：core.js / index.js 的 blob 是 LF，但 autocrlf=true 让本地检出成 CRLF，
+#   于是 3 个多行字面量的内容在「本地 Windows」与「Linux CI」不同。统一 eol=lf 消除该差异。
+
+* text=auto eol=lf
+
+# 补丁表：字节冻结，禁止行尾归一（REPO-1）
+lib/patch/table.js -text
+# constants.js 本来就是 i/-text（git 已按非文本处理），这行只是把意图显式写出来
+lib/patch/constants.js -text
+
+# 生成物：由 scripts/build-client.mjs / embed-default-prompt.mjs 以 LF 写出。
+# CI 的 Codegen drift 门禁依赖逐字节可比，显式声明以免被平台差异带偏。
+client.js text eol=lf
+lib/asset-table.js text eol=lf

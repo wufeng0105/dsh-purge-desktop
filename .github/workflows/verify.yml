@@ -1,0 +1,202 @@
+name: Verify
+
+# WORKFLOW-1 / CI-3 的可执行载体。
+#
+# 为什么不改 release.yml：CI-3 的修复（branch 名 + repo guard）是独立的一条轴，
+# 混进本 PR 会让「规则落地」与「发布修复」无法二分定位（WORKFLOW-2）。
+#
+# 触发分支写 main 与 master 两者：当前仓库是 main，历史发布流程写的是 master。
+# 这样切换默认分支不会静默让 CI 失效 —— 正是 release.yml 现在犯的错。
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # 有 lockfile 用 ci，没有就退回 install —— 本仓库当前无 lockfile。
+      - name: Install dev tooling
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --ignore-scripts
+          else
+            npm install --ignore-scripts --no-audit --no-fund
+          fi
+
+ # WORKFLOW-1：没有全绿测试就没有「行为没变」的判据
+      - name: Unit + contract tests
+        run: npm test
+
+ # ARCH-1 / CONTRACT-5：依赖规则
+      - name: Dependency rules
+        run: npm run arch
+
+ # ARCH-2：孤儿与未用导出。**1.2.1 起是硬门禁**（此前带 `|| true`，等于没有门禁）。
+ # knip 输出已清零：未用导出/重复导出逐项处置完（删死码 / 去掉多余导出 / 删多余豁免）。
+ # 红了就是新增死码，先修再提交。
+      - name: Dead code (knip)
+        run: npm run dead
+
+ # PATCH-5 / PATCH-4 / PATCH-2 / SURFACE-2：ast-grep 原始扫描。**1.2.1 起是硬门禁**。
+ #
+ # 与 test/rules-ratchet.test.mjs 的分工：那条棘轮断言「已登记债务不许涨、也不许
+ # 上限过时」，本步骤负责让**新出现的规则命中**直接红。两处都要在。
+ # 当前命中：no-bare-string 2、host-surface-string-compare 1（singular 已清零）。
+      - name: Patch guard (ast-grep)
+        run: npm run patch-guard
+
+ # 新目录（patch/ host/ prompt/ shim/）的 JSDoc 类型检查。
+ #
+ # 这里是硬门禁，不加 `|| true`：tsconfig.json 的 include 只覆盖新产出的
+ # 新目录，报错数就该是 0。会红只有两种可能 —— 新代码类型错了，或者有人把
+ # 老文件拉进了 include（那种情况要么补类型，要么在 tsconfig 里说明为什么）。
+ # 老模块（desktop.js / surface.js / extract-asar.js）已用 @ts-nocheck 标出，
+ # 理由写在各自文件头 —— 它们是 checkJs 顺 import 链带进来的，不是本次范围。
+      - name: Type check (JSDoc / checkJs)
+        run: npx tsc --noEmit
+
+ # CONTRACT-5：生成物语法必须成立（client.js 是拼装出来的，marker 漂移会静默产出坏文件）
+      - name: Syntax check
+        run: |
+          node --check lib/index.js
+          node --check lib/core.js
+          node --check lib/stamp.js
+          node --check lib/reapply.js
+          node --check client.js
+          node --input-type=module -e "import('./lib/index.js')"
+
+ # CONTRACT-7：产物里不许有**未声明或重复声明**的标识符。
+ #
+ # 为什么需要这条（1.2.1 新增）：`node --check` 只验语法，语法合法的产物照样可以
+ # 在加载时炸 —— v1.0.1/v1.0.2/v1.1.0 三个 tag 的 client.js 就是「5 个标识符零声明
+ # 但被使用」，一进闭包就 ReferenceError，而当时所有门禁全绿。
+ # 这条用 tsc 的语义检查把那一类问题提前到构建期：只拒 TS2304/TS2552/TS2451，
+ # 其余（TS2339/TS2554/TS2307 等）是没装 react 类型的预期噪声，一律放行。
+ # 退出码语义：0 通过 / 1 命中 / **2 环境错误（不算通过）**。
+      - name: Artifact undeclared names (CONTRACT-7)
+        run: npm run check:artifact
+
+ # 架构树反查：① 源码座位 ↔ 树内节点互查、② 域/能力/原子有实现、③ 补丁表全量条目全覆盖
+ # 且 RETIRED 不复用、④ 原子的 op 必须存在于数据面清单。
+ #
+ # 为什么排在这里（M1 的第一件事）：后面的座位迁移与删除全靠它反查
+ # 「新座位登记了没有」「删掉的座位有没有标 dropped」。没有它，改造就没有回到设计的路。
+ # 不加 `|| true`（CI-1）。四条里任何一条红都退出 1。
+      - name: UI tree reverse check
+        run: node scripts/check-ui-tree.mjs
+
+ # 样式 token 纯度：界面源头（lib/client-src/** 与 lib/redteam/client.js）里
+ # 非 var(...) 兜底位置的 #hex / rgb( / hsl( 直填 = 0，主题选择器
+ # （data-ds-dark-theme / [data-theme / .dark / prefers-color-scheme）= 0。
+ #
+ # 为什么需要这条：宿主规范要求颜色一律取 --dsw-alias-* 语义 token、明暗切换归
+ # 主题属主；样式收敛改造后这两条靠评审拦不住回流（直填色写起来永远省事）。
+ # var(--dsw-alias-*, #hex) 形态的兜底是合规的，不算命中。
+ # 与本地 npm run verify 链同一条，不加 `|| true`。
+      - name: Style token purity
+        run: node scripts/check-style-tokens.mjs
+
+ # 设计层三条子判据：裸值、零引用类名、裸 z-index。
+ #
+ # 与前一步不同轴：那一步判「颜色从哪来」，这一步判「取值是不是令牌」「类名有没有人用」
+ # 「层内层级有没有写成数字」。前两条带基线（存量债务不为零），做的是双向棘轮 ——
+ # 高于基线红（新债），低于基线也红（基线过时，会顺手让人下调）：
+ # 两端各自解释了为什么不能只判「不许变差」。
+ # 层级零容忍、不设基线：页面根与浮层根各自隔离层叠上下文，层内先后只与插件内部比，
+ # 所以 z-index 只许写 var(--dshp-z-*)，写成数字即红；另有令牌数下限，防止判据空转成恒绿。
+ # 与本地 npm run verify 链同一条，不加 `|| true`。
+      - name: Design token purity
+        run: node scripts/check-design-tokens.mjs
+
+ # CONTRACT-8：`lib/**` 与 `bin/**` 里不许有**未声明/重复声明**的标识符。
+ #
+ # 为什么需要这条（本次新增）：2026-10-23 在真实官方桌面端上一次性撞出 5 处
+ # ReferenceError（keepSurfaceFile / pathIsUnder / ensureDirSync / atomicWrite* 的
+ # `export {} from` 只转发不建绑定 / lib/skills.js 缺同步 fs / lib/redteam/ui.js 缺 dirname）。
+ # 它们全部通过 node --check、196 个用例、depcruise 与 knip —— 因为只在特定调用链上求值。
+ # 判据与 CONTRACT-7 共用同一份白名单（TS2304/TS2552/TS2451），对象换成宿主侧 ES 模块。
+ # 退出码语义同样：0 通过 / 1 命中 / **2 环境错误（不算通过）**。
+      - name: Lib undeclared names (CONTRACT-8)
+        run: npm run check:lib-names
+
+ # 整洁三条门禁：能按命令判定的整洁要求都在这里，判不了的写在 docs/布局约定.md 第四节。
+ #
+ # 为什么单列一步：它们判的是「文件该怎么摆、注释该怎么写、文档有没有一句话」，
+ # 与测试、类型检查都不同轴。混进已有步骤里，失败信息会指向错误的判据。
+      - name: Tidiness gates (file roles / layout / comments)
+        run: |
+          node scripts/check-file-roles.mjs
+          node scripts/check-layout.mjs
+          node scripts/check-comments.mjs
+
+      # TERM-1：术语账本禁用的同物异名，白名单（账本自身 / primer / rebuild 冻结区 /
+      # 本脚本）外零命中。P1-4 的三分收编走的是 grep 验收，仓中没有脚本，新写一个
+      # 禁用词就回来了 —— 这条把「全组共用一个名字」变成机械护栏。守卫的现役词与
+      # 白名单依据见 scripts/check-terms.mjs 头部。
+      # 与本地 npm run verify 链同一条，不加 `|| true`。
+      - name: Term purity (TERM-1)
+        run: node scripts/check-terms.mjs
+
+      # READER-1：规格常量的读侧必须跟随。写侧把日志代数从 1 改成 8 时，读侧仍写着
+      # `[.1, file]` —— 磁盘上留着多代而 `audit why` 永远说「查无此轮」：证据在、读不到。
+      # 登记表（常量 → 读者清单）、抄写形状与行为探针都在脚本头部。
+      # 与本地 npm run verify 链同一条，不加 `|| true`。
+      - name: Reader follows spec (READER-1)
+        run: node scripts/check-reader-follows.mjs
+
+ # CONTRACT-5 的执行层（VM 里真跑一次 factory）与 marker 判据由
+ # test/client-evaluates.test.mjs 与 test/client-bundle.test.mjs 承担，两者都在
+ # `npm test` 的递归发现范围内 —— 本地与 CI 跑的是同一集合。曾经在这里单列的
+ # 「Client bundle evaluates」「Client bundle markers」两步已退役：独有步骤会打破
+ # 「本地 = CI − codegen drift」的声明式映射（该映射由 test/workflows.test.mjs 断言），
+ # 而单列并不增加任何覆盖。想复核任意 tag 能不能当回滚点：
+ # `npm run verify:rollback -- <tag> --with-deps`。
+
+ # 审计日志落盘冒烟：单元测试只测内存里的形状，这里在系统临时目录造一个假 DSH_HOME
+ # 真写两条事件再读回逐条断言（JSONL 逐行可解析、evidence 两形状、seq 连续）。
+ # 与本地 npm run verify 链末尾同一条（P1-5 并入），不加 `|| true`。
+      - name: Audit log smoke
+        run: node scripts/audit-smoke.mjs
+
+ # AUDIT-1 的可重复执行形态：正常 apply 后审计必须记全（行数对账、三层结论、
+ # completeness 三项、exempt 逐层一致、v2 三字段）。判据体原本只在 `npm test` 的
+ # 夹具用例里跑，装机侧靠人记得 —— 单列这一步让它成为常驻门禁。
+ #
+ # 无参就是判据本身：脚本默认跑仓库内夹具（test/fixtures/audit-f6*.json），
+ # exit 0 即通过；装机树上取回真产物时才显式给 --jsonl / --response。
+ # 与本地 npm run verify 链末尾同一条，不加 `|| true`。
+      - name: Audit completeness probe (AUDIT-1)
+        run: node scripts/check-audit-completeness.mjs
+
+ # CONTRACT-5：生成物必须能从源逐字节复现
+ #
+ # 为什么这条门禁成立：两条生成链现在都是确定性的。
+ #   - build:client 是「区间整体替换」，重跑字节相同
+ #   - embed-prompt 的 mask/IV 由明文派生（lib/table-key.js），不再是 randomBytes
+ #
+ # 之前的 embed-prompt 每次跑出不同的 asset-table.js，所以这个 diff 永远非空 ——
+ # 那种门禁最后一定会被 `|| true` 掉，等于没有门禁（WORKFLOW-1 的老问题）。
+ # 这里**不许**加 `|| true`：红了就说明源与产物真的不同步。
+      - name: Codegen drift (CONTRACT-5)
+        run: |
+          npm run build:client
+          npm run embed-prompt
+          git diff --exit-code -- client.js lib/asset-table.js

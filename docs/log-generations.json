@@ -1,0 +1,803 @@
+{
+  "$comment": "老口径与新口径的差异表。判据：哪个字段从哪一代开始有，以及**只读日志**怎么认出自己拿到的是哪一代。test/log-generations.test.mjs 锁住它与代码、读法三者一致：代码里出现的字段必须在表里，表里的字段必须在读法里。加字段的人先改这里，再改读法 —— 顺序反过来就会漏。 每个字段另登记 readBy（这个名字在哪个文件里被读到：代码、测试或读法文档）或 writeOnly: true + reason（只写不读，写清给谁看）—— test/log-generations.test.mjs 要求二者必居其一。readBy 是宽口径：代码 / 测试 / 脚本真的消费这个字段，或读法文档把它写到读者面前，两种都算；它允许「代码不读但读法要写」的字段，但字段的唯一权威仍是本表，不许在读法里另抄一份字段表。 【口径】这张表登记的是**顶层字段**；三个嵌套组按「组」登记，成员不逐条混进 fields（同名键在不同组里含义不同）：evidence（文件证据 file/marker/hits/bytes/offset；引用证据 refSeq/quote）、detail.completeness（patches/files/layers）、detail.table（total/exempt/unmapped/selected/recorded）。组说明见 docs/readme-for-ai.md 附录 C 的「组说明」一节；test/log-generations.test.mjs 双向核对这三组与它们的成员。",
+  "generations": [
+    {
+      "id": "v1",
+      "label": "第一代（2026-10-24 之前的审计行）",
+      "detect": "审计行没有 recordId / observedTs；actor 恒为 host；没有 detail.considered",
+      "note": "这一代的 actor 不是「谁触发的」，是「谁写的这一行」的占位值；用 entry 回答「谁触发的」在这一代上不成立"
+    },
+    {
+      "id": "v2",
+      "label": "第二代（v2 三字段 + 可复算分母）",
+      "detect": "有 recordId / observedTs / seq；层结论带 detail.considered 与 detail.expectedRows",
+      "note": "runId 把两轨真 join 起来；before/after 摘要从这一代开始有"
+    },
+    {
+      "id": "v2-entry",
+      "label": "第三代（审计行带 entry）",
+      "detect": "审计行有 entry（cli / http / command / tool），层结论带 detail.considered / detail.expectedRows，但整份日志里没有 detail.runEnd、也没有 detail.table",
+      "note": "这一代起诊断轨被滚掉之后仍答得出「谁触发的」；排查旧行时注意：有 entry ≠ 有 runEnd"
+    },
+    {
+      "id": "v3",
+      "label": "第四代（结束标记 + 补丁表记账，本包起）",
+      "detect": "任一行有 detail.runEnd === true 或 detail.table 存在（盖章那条层结论上两者同时写）；诊断轨看 apply.end / apply.gate.reject / audit.recorded 上的 runEnd 字段",
+      "note": "判收尾只看 detail.runEnd 在不在；detail.table.unmapped 交代补丁表里没有层的那些 id"
+    }
+  ],
+  "fields": [
+    {
+      "name": "ts",
+      "track": "audit+diag",
+      "since": "v1",
+      "empty": "—",
+      "meaning": "落盘时刻。审计轨带本地偏移，诊断轨是 UTC",
+      "readBy": [
+        "lib/audit/runs.js",
+        "docs/readme-for-ai.md"
+      ]
+    },
+    {
+      "name": "seq",
+      "track": "audit",
+      "since": "v2",
+      "empty": "（缺这个键）",
+      "meaning": "文件内序号，每个文件各自从 0 起",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/check.js"
+      ]
+    },
+    {
+      "name": "recordId",
+      "track": "audit",
+      "since": "v2",
+      "empty": "（缺这个键）",
+      "meaning": "行级 uuid：跨文件定位一行只能靠它",
+      "readBy": [
+        "lib/audit/events.js",
+        "lib/audit/store.js"
+      ]
+    },
+    {
+      "name": "runId",
+      "track": "audit+diag",
+      "since": "v2",
+      "empty": "\"\"",
+      "meaning": "一次尝试的批次号；UTC 时间戳段 + 4 位十六进制",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "observedTs",
+      "track": "audit",
+      "since": "v2",
+      "empty": "（缺这个键）",
+      "meaning": "落账开始时刻（不是观测起点）；与 ts 的差就是写入积压",
+      "readBy": [
+        "lib/audit/runs.js"
+      ]
+    },
+    {
+      "name": "event",
+      "track": "audit+diag",
+      "since": "v1",
+      "empty": "—",
+      "meaning": "点分事件名",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/check.js"
+      ]
+    },
+    {
+      "name": "result",
+      "track": "audit",
+      "since": "v1",
+      "empty": "—",
+      "meaning": "ok / fail / skip / partial",
+      "readBy": [
+        "lib/audit/runs.js",
+        "docs/readme-for-ai.md"
+      ]
+    },
+    {
+      "name": "layer",
+      "track": "audit",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "prompt / code / tool",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/layers.js"
+      ]
+    },
+    {
+      "name": "actor",
+      "track": "audit",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "谁写的这一行：cli / host。v1 里恒为 host",
+      "readBy": [
+        "lib/audit/events.js",
+        "docs/readme-for-ai.md"
+      ]
+    },
+    {
+      "name": "entry",
+      "track": "audit+diag",
+      "since": "v2-entry",
+      "empty": "\"\"（或缺键）",
+      "meaning": "哪个入口触发的，九个取值",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "target",
+      "track": "audit",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "结论层写层名，文件层写补丁名",
+      "readBy": [
+        "lib/audit/check.js",
+        "lib/audit/events.js"
+      ]
+    },
+    {
+      "name": "evidence",
+      "track": "audit",
+      "since": "v1",
+      "empty": "—",
+      "meaning": "文件证据或引用证据，二选一",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/events.js"
+      ]
+    },
+    {
+      "name": "file",
+      "track": "audit",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "文件证据：落到哪个文件",
+      "readBy": [
+        "lib/audit/events.js",
+        "lib/audit/check.js"
+      ]
+    },
+    {
+      "name": "marker",
+      "track": "audit",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "文件证据：找的字面量",
+      "readBy": [
+        "lib/audit/events.js",
+        "lib/audit/report.js"
+      ]
+    },
+    {
+      "name": "hits",
+      "track": "audit",
+      "since": "v1",
+      "empty": "0",
+      "meaning": "文件证据：命中几次",
+      "readBy": [
+        "lib/audit/remedy.js",
+        "docs/readme-for-ai.md"
+      ]
+    },
+    {
+      "name": "bytes",
+      "track": "audit",
+      "since": "v1",
+      "empty": "0",
+      "meaning": "文件证据：整文件字节数",
+      "readBy": [
+        "lib/audit/events.js",
+        "lib/audit/report.js"
+      ]
+    },
+    {
+      "name": "offset",
+      "track": "audit",
+      "since": "v2",
+      "empty": "（hits=0 时缺键）",
+      "meaning": "首个命中的 UTF-8 字节偏移",
+      "readBy": [
+        "lib/audit/events.js"
+      ]
+    },
+    {
+      "name": "before",
+      "track": "audit",
+      "since": "v2",
+      "empty": "null",
+      "meaning": "apply 前的摘要 {sha256, bytes}；null = 那一侧读不到",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/report.js"
+      ]
+    },
+    {
+      "name": "after",
+      "track": "audit",
+      "since": "v2",
+      "empty": "null",
+      "meaning": "探针那一刻的摘要 {sha256, bytes}",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/events.js"
+      ]
+    },
+    {
+      "name": "refSeq",
+      "track": "audit",
+      "since": "v1",
+      "empty": "0",
+      "meaning": "引用证据：指向本层最后一条文件层事件",
+      "readBy": [
+        "lib/audit/events.js",
+        "lib/audit/store.js"
+      ]
+    },
+    {
+      "name": "quote",
+      "track": "audit",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "引用证据：被引用事件的事件名",
+      "readBy": [
+        "lib/audit/events.js"
+      ]
+    },
+    {
+      "name": "detail",
+      "track": "audit",
+      "since": "v1",
+      "empty": "—",
+      "meaning": "事件自己的结论与分母",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "patchId",
+      "track": "audit",
+      "since": "v1",
+      "empty": "null",
+      "meaning": "文件层回指补丁号",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "status",
+      "track": "audit",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "那一轮的判定档位（applied / already / skipped / pattern_not_found / …）",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "applied",
+      "track": "audit+diag",
+      "since": "v1",
+      "empty": "0",
+      "meaning": "计数：真的改了",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "failed",
+      "track": "audit+diag",
+      "since": "v1",
+      "empty": "0",
+      "meaning": "计数：硬失败（含读写失败）",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "skipped",
+      "track": "audit+diag",
+      "since": "v1",
+      "empty": "0 / \"0\"",
+      "meaning": "计数：这一轮不需要动。诊断轨是字符串数字",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "unresolved",
+      "track": "audit+diag",
+      "since": "v1",
+      "empty": "[] / \"\"",
+      "meaning": "写不出证据的补丁号。审计轨是数组，诊断轨 audit.recorded 里是逗号串",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/remedy.js"
+      ]
+    },
+    {
+      "name": "exempt",
+      "track": "audit+diag",
+      "since": "v2",
+      "empty": "[]",
+      "meaning": "auditExempt 的补丁号：不是缺口",
+      "readBy": [
+        "lib/audit/runs.js",
+        "scripts/check-audit-completeness.mjs"
+      ]
+    },
+    {
+      "name": "completeness",
+      "track": "audit",
+      "since": "v1",
+      "empty": "—",
+      "meaning": "{patches, files, layers} 三个布尔",
+      "readBy": [
+        "lib/audit/runs.js",
+        "docs/readme-for-ai.md"
+      ]
+    },
+    {
+      "name": "patches",
+      "track": "audit+diag",
+      "since": "v1",
+      "empty": "0 / \"0\"",
+      "meaning": "completeness 的一项；诊断轨另有 apply.start.patches = 补丁表总数",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "files",
+      "track": "audit+diag",
+      "since": "v1",
+      "empty": "0 / \"0\"",
+      "meaning": "completeness 的一项；诊断轨 install.record.files = 指纹文件数",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "layers",
+      "track": "audit+diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "completeness 的一项；诊断轨 audit.recorded.layers 是逗号串",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/layers.js"
+      ]
+    },
+    {
+      "name": "considered",
+      "track": "audit",
+      "since": "v2",
+      "empty": "[]",
+      "meaning": "这一层折进来的补丁号（不再是分母）",
+      "readBy": [
+        "lib/audit/runs.js",
+        "docs/readme-for-ai.md"
+      ]
+    },
+    {
+      "name": "expectedRows",
+      "track": "audit",
+      "since": "v2",
+      "empty": "0",
+      "meaning": "这些补丁声明的落点行数",
+      "readBy": [
+        "lib/audit/runs.js"
+      ]
+    },
+    {
+      "name": "partialReason",
+      "track": "audit",
+      "since": "v3",
+      "empty": "（非 partial 时缺键）",
+      "meaning": "record / layer：partial 的两个来路",
+      "readBy": [
+        "lib/audit/runs.js",
+        "docs/readme-for-ai.md"
+      ]
+    },
+    {
+      "name": "runEnd",
+      "track": "audit+diag",
+      "since": "v3",
+      "empty": "（缺键）",
+      "meaning": "结束标记：审计轨是 true，诊断轨是 engine / audit 两个阶段名",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/generation.js"
+      ]
+    },
+    {
+      "name": "table",
+      "track": "audit",
+      "since": "v3",
+      "empty": "（缺键）",
+      "meaning": "补丁表记账 {total, exempt, unmapped, selected, recorded}；selected 是这一轮 report 里出现过的补丁号（apply 带过滤时它才是分母），total 仍是补丁表全量",
+      "readBy": [
+        "lib/audit/accounting.js",
+        "lib/audit/runs.js",
+        "docs/readme-for-ai.md"
+      ]
+    },
+    {
+      "name": "unmapped",
+      "track": "audit",
+      "since": "v3",
+      "empty": "[]",
+      "meaning": "补丁表里没有层的非豁免 id（兼容类）",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/report.js"
+      ]
+    },
+    {
+      "name": "total",
+      "track": "audit+diag",
+      "since": "v3",
+      "empty": "0",
+      "meaning": "detail.table.total = 写那一刻的补丁表条数",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "recorded",
+      "track": "audit",
+      "since": "v3",
+      "empty": "0",
+      "meaning": "detail.table.recorded = 这一轮真落成文件行的补丁号个数（不含 unresolved）；有 selected 时它只对 selected 负责，合法的过滤 apply 小于补丁表全量是正常的",
+      "readBy": [
+        "lib/audit/accounting.js",
+        "lib/audit/runs.js",
+        "scripts/check-audit-completeness.mjs"
+      ]
+    },
+    {
+      "name": "mode",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "cli.invoke：这次 CLI 的模式",
+      "readBy": [
+        "lib/audit/check.js",
+        "lib/index.js"
+      ]
+    },
+    {
+      "name": "selected",
+      "track": "diag+audit",
+      "since": "v1",
+      "empty": "\"0\" / []",
+      "meaning": "apply.start：过滤后真正要打的条数（字符串数字）；detail.table.selected：这一轮 report 里出现过的补丁号数组（审计轨 v3 起），过滤 apply 的 recorded 分母由它来",
+      "readBy": [
+        "lib/audit/query.js",
+        "lib/audit/accounting.js",
+        "lib/audit/report.js"
+      ]
+    },
+    {
+      "name": "forApply",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"false\"",
+      "meaning": "apply.start：是不是「应用」语义",
+      "readBy": [
+        "lib/core.js",
+        "docs/readme-for-ai.md"
+      ]
+    },
+    {
+      "name": "hostVersion",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "宿主实际版本。出现在 apply.start / apply.gate.reject / apply.host 三处",
+      "readBy": [
+        "lib/audit/remedy.js",
+        "lib/host-version.js"
+      ]
+    },
+    {
+      "name": "dshTarget",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "补丁表要求的版本。与 hostVersion 成对出现",
+      "readBy": [
+        "lib/audit/remedy.js",
+        "lib/host-version.js"
+      ]
+    },
+    {
+      "name": "bases",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "apply.hosts：宿主根，逗号串",
+      "readBy": [
+        "lib/core.js"
+      ]
+    },
+    {
+      "name": "count",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"0\"",
+      "meaning": "apply.hosts：宿主个数",
+      "writeOnly": true,
+      "reason": "只写不读：apply.hosts 的宿主个数是给人看的汇总，程序按 bases 逐条走，没有判据读它"
+    },
+    {
+      "name": "id",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "apply.patch：补丁号",
+      "readBy": [
+        "lib/audit/runs.js",
+        "lib/audit/report.js"
+      ]
+    },
+    {
+      "name": "name",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "apply.patch：补丁名",
+      "readBy": [
+        "lib/audit/report.js",
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "base",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "apply.patch / apply.host：宿主根",
+      "readBy": [
+        "lib/core.js"
+      ]
+    },
+    {
+      "name": "soft",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"0\"",
+      "meaning": "apply.host：按判定可接受的条数（不是软失败）",
+      "readBy": [
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "markers",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"false\"",
+      "meaning": "apply.host：清洗标记有没有落到引擎算出来的 aiBase",
+      "readBy": [
+        "lib/core.js"
+      ]
+    },
+    {
+      "name": "flash",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"false\"",
+      "meaning": "apply.host：命令框静默链结果，与补丁判定无关",
+      "writeOnly": true,
+      "reason": "只写不读：命令框静默链的结果，与补丁判定无关；没有任何分支按它判断，读的人看它确认面板没弹框"
+    },
+    {
+      "name": "ms",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"0\"",
+      "meaning": "耗时（毫秒）",
+      "readBy": [
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "pendingRestart",
+      "track": "diag",
+      "since": "v2",
+      "empty": "\"false\"",
+      "meaning": "apply.end：这一轮改了文件，要重启才被读到",
+      "readBy": [
+        "lib/audit/query.js",
+        "lib/audit/remedy.js"
+      ]
+    },
+    {
+      "name": "asarSealed",
+      "track": "diag",
+      "since": "v2",
+      "empty": "\"\"",
+      "meaning": "apply.end：这一轮面对的官方归档是否仍密封",
+      "readBy": [
+        "lib/audit/query.js",
+        "lib/audit/remedy.js"
+      ]
+    },
+    {
+      "name": "readError",
+      "track": "diag",
+      "since": "v2",
+      "empty": "\"0\"",
+      "meaning": "apply.end：读失败条数（已计入 failed）",
+      "readBy": [
+        "lib/core.js",
+        "docs/readme-for-ai.md"
+      ]
+    },
+    {
+      "name": "writeError",
+      "track": "diag",
+      "since": "v2",
+      "empty": "\"0\"",
+      "meaning": "apply.end：写失败条数（已计入 failed）",
+      "readBy": [
+        "lib/core.js",
+        "docs/readme-for-ai.md"
+      ]
+    },
+    {
+      "name": "notFound",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"0\"",
+      "meaning": "apply.end：pattern_not_found 条数（与 failed 有重叠）",
+      "readBy": [
+        "lib/audit/query.js"
+      ]
+    },
+    {
+      "name": "missingFile",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"0\"",
+      "meaning": "apply.end：缺件条数（不算失败）",
+      "readBy": [
+        "lib/audit/query.js",
+        "lib/audit/remedy.js"
+      ]
+    },
+    {
+      "name": "reason",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "apply.end：空轮的原因（no_patches_given / all_patches_filtered）",
+      "readBy": [
+        "lib/core.js",
+        "lib/audit/startup.js"
+      ]
+    },
+    {
+      "name": "events",
+      "track": "diag",
+      "since": "v2-entry",
+      "empty": "\"0\"",
+      "meaning": "audit.recorded：这一轮审计轨落了几行",
+      "readBy": [
+        "lib/audit/runs.js",
+        "scripts/check-audit-completeness.mjs"
+      ]
+    },
+    {
+      "name": "readme",
+      "track": "diag",
+      "since": "v2-entry",
+      "empty": "\"\"",
+      "meaning": "audit.recorded：读法投递结果 installed / kept / failed",
+      "writeOnly": true,
+      "reason": "只写不读：读法投递结果（installed / kept / failed）供人查投递做没做成，现场还有没有那份文件才是证据"
+    },
+    {
+      "name": "cards",
+      "track": "diag",
+      "since": "v2-entry",
+      "empty": "\"0\"",
+      "meaning": "audit.recorded：写了几张失败卡（字符串数字）",
+      "writeOnly": true,
+      "reason": "只写不读：这一轮写了几张失败卡；卡片本身在 cards/ 目录，程序不按这个计数做判断"
+    },
+    {
+      "name": "cardPath",
+      "track": "diag",
+      "since": "v2-entry",
+      "empty": "\"\"",
+      "meaning": "audit.recorded：卡片的落点",
+      "writeOnly": true,
+      "reason": "只写不读：卡片的落点路径，供人直接去开那张卡；remedy.js 自己重算路径，不读这一栏"
+    },
+    {
+      "name": "appliedStamp",
+      "track": "diag",
+      "since": "v2",
+      "empty": "\"\"",
+      "meaning": "startup.ready：<version>@<sha>@<at>，at 是上一次启动留下的",
+      "readBy": [
+        "lib/audit/remedy.js"
+      ]
+    },
+    {
+      "name": "patchesMatch",
+      "track": "diag",
+      "since": "v2",
+      "empty": "\"false\"",
+      "meaning": "startup.ready：引擎判补丁已对齐",
+      "readBy": [
+        "lib/audit/remedy.js",
+        "docs/readme-for-ai.md"
+      ]
+    },
+    {
+      "name": "version",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "startup.ready：插件版本（不是宿主版本）",
+      "readBy": [
+        "lib/audit/startup.js",
+        "lib/audit/remedy.js"
+      ]
+    },
+    {
+      "name": "inject_source",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "cli.apply.begin / cli.apply.abort / cli.apply.done：注入来源（default 等）",
+      "writeOnly": true,
+      "reason": "只写不读：CLI 这一轮的注入来源（default 等），回答「这次用的是哪份注入」靠人读，没有判据按它判断"
+    },
+    {
+      "name": "path",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "install.record 等事件里的落点文件（不是补丁的落点）",
+      "readBy": [
+        "lib/audit/report.js",
+        "lib/audit/check.js"
+      ]
+    },
+    {
+      "name": "error",
+      "track": "diag",
+      "since": "v1",
+      "empty": "\"\"",
+      "meaning": "diagError 附带的错误文本；code / stack 与它同批",
+      "readBy": [
+        "lib/audit/check.js",
+        "lib/audit/index.js"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+name: Release
+
+# 私有库：不发 npm、不发 GitHub Release、不生成对外分发包。
+#
+# CI-3 修复记录（2026-10-21）：
+#   旧版 on.push.branches 写的是 `master`，而实际默认分支是 `main`；
+#   旧版 job 守卫写的是 `github.repository == 'wufeng0105/dsh-purge'`，
+#   而实际仓库是 `wufeng0105/dsh-purge-desktop`。
+#   两个条件同时不满足 → 这个 workflow 从建仓起**从未执行过**，
+#   里面那三条 `node --check` 是当时唯一的语法门禁，也一起没跑过。
+#
+# 现在它只做一件事：在打 tag 时**校验发布就绪度**，通过后打 tag。
+# 真正的门禁在 verify.yml（每次 push/PR 都跑），本文件只管「tag 能不能打」。
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "只校验，不打 tag、不建 release"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # 守卫改成「不写死仓库名」：任何 fork / 私有镜像都能跑，
+    # 避免再次出现「守卫写死旧仓名 → workflow 永不触发」。
+    if: github.repository_owner != '' && vars.DSH_PURGE_RELEASE_ENABLED != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install dev tooling
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --ignore-scripts
+          else
+            npm install --ignore-scripts --no-audit --no-fund
+          fi
+
+      # 发布门禁是 verify 全量的子集（CI-4）：tag 由过审 commit 打出，tag 前的 push 已在
+      # verify.yml 跑过全量；这里只重验核心五项（test / arch / 语法 / 更新通道 / release-notes），
+      # 不重复整洁门禁与类型/产物检查 —— 重复只加时长不加保护。
+      - name: Gate — tests
+        run: npm test
+
+      - name: Gate — dependency rules
+        run: npm run arch
+
+      - name: Gate — syntax
+        run: |
+          node --check lib/index.js
+          node --check lib/core.js
+          node --check lib/reapply.js
+          node --check client.js
+          node --input-type=module -e "import('./lib/index.js')"
+
+ # UPDATE-1：私有库的更新通道必须是关闭状态，否则打出去的包会指向公网旧仓
+      - name: Gate — update channel is local
+        run: |
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+            const install = pkg.dsh && pkg.dsh.install;
+            if (!install || install.preferred !== "local") {
+              console.error("dsh.install.preferred 必须是 local（私有库不提供公网安装源）");
+              process.exit(1);
+            }
+            if (install.tarball || install.zip || install.git) {
+              console.error("dsh.install 不许声明公网安装源");
+              process.exit(1);
+            }
+            const legacy = /wufeng0105\/dsh-purge(?!-master)/;
+            if (legacy.test(JSON.stringify({ r: pkg.repository, h: pkg.homepage, b: pkg.bugs }))) {
+              console.error("package.json 元数据仍指向旧公网仓");
+              process.exit(1);
+            }
+            console.log("update channel: local ✓");
+          '
+
+      # release-notes 的版本号必须与 package.json 一致，且不许倒挂
+      - name: Gate — release notes
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          first="$(head -n 1 release-notes.md | tr -d '\r')"
+          if [ "$first" != "# ${version}" ]; then
+            echo "::error::release-notes.md 第一行必须是 '# ${version}'，现在是: ${first}"
+            exit 1
+          fi
+          echo "release-notes 首行匹配 v${version} ✓"
+
+      - name: Summary
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          {
+            echo "### 发布就绪：v${version}"
+            echo ""
+            echo "- 测试：全绿"
+            echo "- 依赖规则：0 error"
+            echo "- 更新通道：local（私有库，无远端源）"
+            echo "- release-notes：首行匹配"
+            echo ""
+            echo "**本仓库不发布 npm 包，也不建 GitHub Release。**"
+            echo "分发方式：本地 tarball（\`npm pack\` 后 \`dsh plugin add <tarball>\`）。"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # 只有显式要求时才建 release。
+      #
+      # 旧条件 `github.event_name == 'push' || inputs.dry_run == false` 是错的：
+      # 打 tag 走的就是 push 事件，所以这个条件**恒为真**，与上面 Summary 里
+      # 「本仓库不发布 npm 包，也不建 GitHub Release」的声明自相矛盾。
+      # 实测后果：push v1.0.0-baseline 时 CI 自己建了一个 v1.0.0 的 Release
+      # 并上传了 zip —— 没人要求过。
+      #
+      # 现在只有两条路能建 release：手工 workflow_dispatch 且显式 dry_run=false，
+      # 或者仓库变量 DSH_PURGE_RELEASE_CREATE 被设成 true（升级为「要发布」时用）。
+      - name: Create release (opt-in)
+        if: >-
+          (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
+          || vars.DSH_PURGE_RELEASE_CREATE == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
+          # tag 已存在时不再重复建，避免与手工打的 tag 冲突
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "already published: $tag"
+            exit 0
+          fi
+          zip="dsh-purge-${version}.zip"
+          git archive --format=zip --prefix="dsh-purge-${version}/" --output="$zip" HEAD
+          test -s "$zip"
+          args=(release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes-file release-notes.md)
+          case "$version" in
+            *beta*|*alpha*|*rc*) args+=(--prerelease) ;;
+          esac
+          gh "${args[@]}"
+          gh release upload "$tag" "$zip" --clobber
+          echo "published $tag (internal distribution only)"

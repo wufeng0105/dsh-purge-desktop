@@ -1,0 +1,120 @@
+{
+  "name": "dsh-purge",
+  "version": "2.3.2",
+  "description": "DeepSeek Harness 破甲：让所有模型都能破甲，不同模型可换不同提示词。Jailbreak for every model — swap prompts per model.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": "./client.js",
+    "./redteam": "./lib/redteam/index.js",
+    "./redteam/store": "./lib/redteam/store.js",
+    "./redteam/ui": "./lib/redteam/ui.js",
+    "./redteam/tools": "./lib/redteam/tools.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-purge": "bin/dsh-purge.js"
+  },
+  "files": [
+    "lib",
+    "!lib/default-prompt-inject.md",
+    "!lib/default-prompt-inject.md.bak",
+    "!lib/default-prompt-inject.zh.md",
+    "!lib/default-prompt-inject.en.md",
+    "bin",
+    "docs/banner.svg",
+    "docs/preview",
+    "docs/readme-for-ai.md",
+    "docs/redteam-upstream-LICENSE",
+    "docs/redteam-upstream-DISCLOSURE",
+    "presets",
+    "skills",
+    "scripts",
+    "client.js",
+    "cordis.patch.yml",
+    "screenshots.json",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "embed-prompt": "node scripts/embed-default-prompt.mjs",
+    "build:client": "node scripts/build-client.mjs",
+    "test": "node --test",
+    "test:cov": "node --test --experimental-test-coverage --test-coverage-include=\"lib/**\" --test-coverage-exclude=\"lib/redteam/**\"",
+    "arch": "depcruise lib bin scripts --config .dependency-cruiser.mjs --output-type err",
+    "dead": "knip --reporter compact",
+    "patch-guard": "ast-grep scan --config sgconfig.yml --report-style short",
+    "check:artifact": "node scripts/check-artifact-names.mjs",
+    "check:lib-names": "node scripts/check-lib-names.mjs",
+    "verify:rollback": "node scripts/verify-rollback-point.mjs",
+    "probe:host": "node scripts/probe-host-patches.mjs",
+    "probe:clean-host": "node scripts/check-clean-host-sim.mjs",
+    "probe:dryrun": "node scripts/check-host-upgrade-dryrun.mjs",
+    "verify": "npm run test && npm run arch && npm run dead && npm run patch-guard && npm run check:artifact && node scripts/check-ui-tree.mjs && node scripts/check-style-tokens.mjs && node scripts/check-design-tokens.mjs && npm run check:lib-names && node scripts/check-file-roles.mjs && node scripts/check-layout.mjs && node scripts/check-comments.mjs && node scripts/check-terms.mjs && node scripts/check-reader-follows.mjs && npx tsc --noEmit && node --check lib/index.js && node --check lib/core.js && node --check lib/stamp.js && node --check client.js && node scripts/audit-smoke.mjs && node scripts/check-audit-completeness.mjs"
+  },
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "dsh-plugins",
+    "网络安全",
+    "红队评测",
+    "llm-security",
+    "harness-security",
+    "deepseek-harness",
+    "red-team",
+    "instructions",
+    "rules",
+    "prompt-eval",
+    "agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wufeng0105/dsh-purge-desktop.git"
+  },
+  "homepage": "https://github.com/wufeng0105/dsh-purge-desktop#readme",
+  "bugs": {
+    "url": "https://github.com/wufeng0105/dsh-purge-desktop/issues"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    },
+    "install": {
+      "preferred": "local",
+      "local": ".",
+      "note": "源码公开，但不提供公网安装源。用 dsh plugin add <本地路径或 file: tarball> 安装。"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dshTarget": "0.2.1-rc.2",
+  "devDependencies": {
+    "@ast-grep/cli": "^0.51.0",
+    "@types/node": "^26.6.5",
+    "dependency-cruiser": "^18.7.0",
+    "knip": "^6.42.1",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "complete": true,
+  "restarting": false,
+  "unpacked_asar": false,
+  "applied": 0,
+  "already": 65,
+  "failed": 0,
+  "run_id": "apply-20261024T090450Z-test",
+  "audit_layers": {
+    "prompt": { "total": 2, "applied": 1, "failed": 0, "skipped": 1, "result": "partial" },
+    "code": { "total": 1, "applied": 1, "failed": 0, "skipped": 0, "result": "ok" },
+    "tool": { "total": 1, "applied": 1, "failed": 0, "skipped": 0, "result": "ok" }
+  },
+  "audit": { "patches": 66, "rows": 4, "files": 3, "represented": 4, "unresolved": [] },
+  "audit_line": "patches=66 rows=4 files=3 unresolved=",
+  "audit_events": 7,
+  "failed_items": [],
+  "report": []
+}

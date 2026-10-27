@@ -1,0 +1,46 @@
+id: no-bare-string-patch
+language: JavaScript
+# severity 保持 warning：本规则是「棘轮」，不是「清零」。
+# 存量 2 处已登记为 PATCH-5 的待偿债务（具体位置以最新 patch-guard 输出为准）；
+# 由 test/rules-ratchet.test.mjs 断言「命中数不得增加」来强制，而不是靠 exit code。
+# 若设成 error，首日 scan 就会红，下一步一定被 `|| true` 绕过（WORKFLOW-1）。
+severity: warning
+message: >-
+  宿主补丁必须走 replacements:[{pattern,replace}] + markers:[]，不许用裸
+  text.replace("字面量")。裸 replace 没有 marker 兜底，宿主升级后失效是静默的
+  （PATCH-5）。
+note: |
+  允许的写法（core.js 的 ALL_PATCHES 条目）：
+
+  {
+  id: 93, name: "SOME_PATCH", layer: "代码",
+  desc: "…",
+  file: "base",
+  replacements: [{ pattern: "旧字面量", replace: "新字面量" }],
+  markers: ["新字面量"],
+  }
+
+  为什么：patchStatus 用 markers 判定 applied / pending / skipped 三态
+  （core.js 的 filePatchOutcome）。没有 markers 的条目只能靠软判定兜底，
+  全仓补丁表里只有 1 条（id 21）这么做，且已登记豁免（PATCH-2）。
+files:
+  - "lib/core.js"
+  # 补丁表整块搬到 lib/patch/。本规则的意图是「宿主补丁不许裸 replace」，
+  # 不是「core.js 不许裸 replace」—— 搬家后必须跟着扫新位置，否则棘轮会因为
+  # 「扫不到」而假性变绿（2026-10-22 实测：搬完命中数从 2 掉到 1，
+  # 掉的那 1 处正是 clearShellNetworkBan 被搬进 lib/patch/constants.js）。
+  - "lib/patch/*.js"
+ignores:
+  # 纯文本工具函数：输入是我们自己读进来又写回去的字符串，不是宿主源码。
+ # 这类归 PATCH-5 的「A 类」，允许直接 replace（PATCH-5）。
+  - "lib/phase1-keep.js"
+  - "lib/host-clean.js"
+rule:
+  any:
+    # 只抓「形如宿主补丁」的裸 replace：目标是 .js/.yml/.ts 源码文本变量，
+    # 且字面量长度 >= 12（短的几乎都是内部字符串处理）。
+    - pattern: $TEXT.replace($NEEDLE, $REPL)
+    - pattern: $TEXT.replaceAll($NEEDLE, $REPL)
+constraints:
+  NEEDLE:
+    regex: '^"[^"]{12,}"$'

@@ -1,0 +1,77 @@
+# dsh-purge 计分口径 characterization 快照
+#
+# 列：name | payload
+#
+# 生成：test/redteam-score-snapshot.test.mjs（见文件头注释）
+# 更新：$env:DSH_PURGE_UPDATE_SNAPSHOT=1; node --test test/redteam-score-snapshot.test.mjs
+#
+# 这个文件是计分口径的唯一行为基线，锁的是**现状**，不是「现状正确」。
+# 拆分搬移时它必须逐行不变；只有有意改口径（改分值 / 改上限 / 改去重口径）才允许出现差异。
+
+data DEFAULT_SCORE_POINTS sha256 | "10090f3caae89d49d8411da897c08073c2a1460fc2a729c4143ddb68cbda8872"
+data DEFAULT_SCORE_POINTS count | 25
+point domain-control | [1,1,"GENERAL",50,400,"system",17,95]
+point terminal-access | [2,2,"GENERAL",10,600,"system",10,177]
+point server-host | [3,3,"GENERAL",50,600,"system",18,127]
+point db-credential | [4,4,"GENERAL",50,400,"system",27,172]
+point web-app | [5,5,"WEB",100,2000,"system",19,637]
+point central-system | [7,6,"CENTRAL",500,4000,"system",19,347]
+point bigdata-system | [8,7,"BIGDATA",1000,4000,"system",21,136]
+point netdev | [9,8,"NETINFRA",200,2000,"service",32,191]
+point iiot | [10,9,"NETINFRA",200,2000,"system",19,102]
+point cloud-platform | [11,10,"NETINFRA",500,2000,"system",19,191]
+point iot-platform | [12,11,"NETINFRA",200,2000,"system",29,129]
+point secdev | [13,12,"NETINFRA",200,1000,"service",9,54]
+point file-storage | [14,13,"STORAGE",50,500,"system",18,123]
+point ai-agent | [15,14,"MODEL",100,4000,"service",11,110]
+point model-compute | [16,15,"MODEL",500,4000,"system",14,208]
+point model-data | [18,16,"MODEL",500,4000,"system",15,170]
+point computepower-admin | [19,17,"MODEL",500,2000,"system",11,124]
+point computepower-cards | [19,18,"MODEL",10,2000,"none",6,111]
+point boundary-logical | [22,19,"BOUNDARY",1000,0,"target",6,72]
+point boundary-strong | [23,20,"BOUNDARY",10000,0,"target",7,73]
+point boundary-physical | [24,21,"BOUNDARY",30000,0,"target",7,134]
+point boundary-supply | [25,22,"BOUNDARY",1000,3000,"service",15,183]
+point netdev-redirect | [9,23,"NETINFRA",200,2000,"none",17,130]
+point netdev-implant | [9,24,"NETINFRA",1000,2000,"none",18,92]
+point iot-corenet | [12,25,"NETINFRA",5000,5000,"none",11,115]
+data SCORE_GROUPS | [["GENERAL","控制一般系统"],["WEB","控制 Web 应用系统"],["CENTRAL","控制集权系统"],["BIGDATA","控制大数据系统"],["NETINFRA","控制网络基础设施"],["STORAGE","文件存储类系统"],["MODEL","控制模型相关系统"],["BOUNDARY","突破网络边界"]]
+data SCORE_CONFIRM keys | ["ai-agent","bigdata-system","boundary-logical","boundary-physical","boundary-strong","boundary-supply","central-system","cloud-platform","computepower-admin","computepower-cards","db-credential","domain-control","file-storage","iiot","iot-corenet","iot-platform","model-compute","model-data","netdev","netdev-implant","netdev-redirect","secdev","server-host","terminal-access","web-app"]
+data TUNNEL_ENTRY_KINDS | [["target-outbound","目标主动连出（反弹 shell / 目标上跑 frp 客户端）"],["target-http","经目标 WebShell/HTTP 通道（suo5 / Neo-ReGeorg）"],["target-agent","经目标已控进程/会话转发（SSH -R 等）"],["self-only","只在自己 VPS/自建服务器上（不算突破）"]]
+data SERVICE_CAPPED_POINT_CODES | ["web-account-user","web-account-admin","db-access"]
+data SENSITIVE_DATA_MIN_ROWS | 1000000
+dedup service 同服务键留高分 | [[1,1,"dedup",2,"service","rule:1",1,0,10,null,null],[2,0,null,null,"service","rule:1",1,0,20,null,null],[3,0,null,null,"service","rule:1",1,0,30,null,null]]
+dedup service 两条独立服务 | [[1,0,null,null,"service","rule:1",1,0,10,null,null],[2,0,null,null,"service","rule:1",1,0,20,null,null]]
+dedup system 资产名路径 | [[1,1,"dedup",2,"system","rule:2",2,0,10,null,null],[2,0,null,null,"system","rule:2",2,0,50,null,null],[3,0,null,null,"system","rule:2",2,0,10,null,null]]
+dedup system 显式键采信 | [[1,1,"dedup",2,"system","rule:2",2,0,10,null,"oa-a|t10.0.0.1:443"],[2,0,null,null,"system","rule:2",2,0,99,null,"oa-a|t10.0.0.1:443"]]
+dedup system 显式键不采信退资产名 | [[1,1,"dedup",2,"system","rule:2",2,0,10,null,"别处的系统|443"],[2,0,null,null,"system","rule:2",2,0,50,null,"别处的系统|443"]]
+dedup system 无服务键时显式键判名 | [[1,1,"dedup",2,"system","rule:2",2,0,10,null,"oa-sub|443"],[2,0,null,null,"system","rule:2",2,0,50,null,"oa-sub|443"],[3,0,null,null,"system","rule:2",2,0,90,null,"|443"]]
+dedup system 三条皆空各算各 | [[1,0,null,null,"system","rule:2",2,0,10,null,null],[2,0,null,null,"system","rule:2",2,0,50,null,null]]
+dedup target 只留最高 | [[1,1,"dedup",2,"target","rule:3",3,0,100,null,null],[2,0,null,null,"target","rule:3",3,0,300,null,null]]
+dedup none 不去重 | [[1,0,null,null,"none","rule:4",4,0,5,null,null],[2,0,null,null,"none","rule:4",4,0,5,null,null]]
+legacy web-account-user | [[1,1,"dedup",2,"service","code:web-account-user",null,0,10,null,null],[2,0,null,null,"service","code:web-account-user",null,0,20,null,null]]
+legacy web-account-admin | [[1,1,"dedup",2,"service","code:web-account-admin",null,0,10,null,null],[2,0,null,null,"service","code:web-account-admin",null,0,20,null,null]]
+legacy db-access | [[1,1,"dedup",2,"service","code:db-access",null,0,10,null,null],[2,0,null,null,"service","code:db-access",null,0,20,null,null]]
+legacy server-host | [[1,0,null,null,"none","code:server-host",null,0,10,null,null],[2,0,null,null,"none","code:server-host",null,0,20,null,null]]
+cap 规则上限 | [[1,1,"cap",null,"none","rule:5",5,30,10,null,null],[2,0,null,null,"none","rule:5",5,30,25,null,null],[3,0,null,null,"none","rule:5",5,30,5,null,null]]
+cap 上限用量表 | [["rule:5",{"rule":5,"cap":30,"used":30,"capped":1}]]
+cap 与 dedup 叠加 | [[1,1,"dedup",2,"service","rule:9",9,15,10,null,null],[2,1,"cap",null,"service","rule:9",9,15,20,null,null]]
+self_created 不参与 | [[1,0,null,null,"service","rule:1",1,0,100,null,null],[2,1,"dedup",3,"service","rule:1",1,0,20,null,null],[3,0,null,null,"service","rule:1",1,0,30,null,null]]
+meta 普通对象与 Map 等价 | [[1,1,"dedup",2,"service","rule:1",1,0,10,null,null],[2,0,null,null,"service","rule:1",1,0,20,null,null]]
+parse parseTargetPort | [["https://h:8443/a?b=1",8443],["http://h/x",null],["https://h/x",null],["h:6379",6379],["h",null],["2001:db8::1",1],["[::1]:22",22],["http://[2001:db8::1]:8080/x",8080],["10.0.0.5:65536",null],["10.0.0.5:0",null],["",null],["   ",null]]
+parse normalizePort | [["null",null],["undefined",null],["",null],["0",null],["443",443],["443",443],["65536",null],["-1",null],["80.5",null],["0",null]]
+parse targetAuthority | [["https://h:8443/a?b=1","h:8443"],["http://h/x","h:80"],["https://h/x","h:443"],["h:6379","h:6379"],["h","h"],["2001:db8::1","2001:db8::1"],["[::1]:22","[::1]:22"],["http://[2001:db8::1]:8080/x","[2001:db8::1]:8080"],["10.0.0.5:65536","10.0.0.5"],["10.0.0.5:0","10.0.0.5"],["",null],["   ",null]]
+parse scoreServiceKey 只有 target | [["https://h:8443/a?b=1","th:8443"],["http://h/x","th:80"],["https://h/x","th:443"],["h:6379","th:6379"],["h","th"],["2001:db8::1","t2001:db8::1"],["[::1]:22","t[::1]:22"],["http://[2001:db8::1]:8080/x","t[2001:db8::1]:8080"],["10.0.0.5:65536","t10.0.0.5"],["10.0.0.5:0","t10.0.0.5"],["",null],["   ",null]]
+parse scoreServiceKey 退资产 | ["a7:443","a7:0",null,null]
+parse serviceLabel | ["10.0.0.9","10.0.0.9","a.test:443","a.test:8443","h","(未标注服务)","(未标注服务)"]
+parse scoreCapReasonText | ["「a.test:443」这条不计分：规则 9 的**累计得分已达该规则上限（15 分）**——同一规则超出上限的部分不再累加。把精力换到别的规则或别的资产上，不要在已达上限的规则里继续刷。","「a.test:443」这个目标上的权限已经拿满（计分口径：同一目标只算分值最高的那条）——这条按规则不再计分，只作过程留痕；**换目标或换规则推进，不要在同一个目标上刷同类成果**。","「a.test:443」这个目标上的权限已经拿满（计分口径：同一目标只算分值最高的那条，+20 分）——这条按规则不再计分，只作过程留痕；**换目标或换规则推进，不要在同一个目标上刷同类成果**。","「(未标注服务)」这条不计分：的**累计得分已达该规则上限（0 分）**——同一规则超出上限的部分不再累加。把精力换到别的规则或别的资产上，不要在已达上限的规则里继续刷。"]
+parse scoreConfirmOf | [{"need":"用账号成功连上数据库并执行了查询（未授权访问也算：能连上即成立）","proof":"登录成功后的查询回显（select user(), version()）+ 账号权限级别","replay":"mysql -h <host> -P <port> -u <user> -p'<pass>' -e \"select user(),version()\"","script":"mysql -h <host> -u <user> -p -e \"select user(),version(),current_user()\""},{"need":"用账号成功连上数据库并执行了查询（未授权访问也算：能连上即成立）","proof":"登录成功后的查询回显（select user(), version()）+ 账号权限级别","replay":"mysql -h <host> -P <port> -u <user> -p'<pass>' -e \"select user(),version()\"","script":"mysql -h <host> -u <user> -p -e \"select user(),version(),current_user()\""},null,null,null]
+parse parseRowCount | [["999999 条",999999],["1000000 条",1000000],["1000001 条",1000001],["120 万条",1200000],["1,200,000 条记录",1200000],["2.5万行",25000],["1200000 records",1200000],["导出 120 万",1200000],["123456",null],["",null],["null",null]]
+parse SENSITIVE_DATA_MIN_ROWS 阈值邻域 | [["999999 条",999999,false],["1000000 条",1000000,true],["1000001 条",1000001,true]]
+parse formatRows | ["0","1,000,000","1,234,567"]
+parse tunnelIsLegit | [["target-outbound",true],["target-http",true],["target-agent",true],["self-only",false],["  self-only  ",false],["",null],["null",null]]
+multi targetHasIpv6Host | [["http://[2001:db8::1]:8080/x",true],["2001:db8::1",true],["[::1]:22",false],["2001:db8::1:443",true],["dc01:389",false],["ad01:8080",false],["https://h/x",false],["",false],["http://[::1]/",true]]
+multi scoreMultiplierOf | [[{"target":"http://[2001:db8::1]:8080/x"},{"multiplier":3,"reasons":["G6 IPv6 成果 ×3"]}],[{"target":"2001:db8::1"},{"multiplier":3,"reasons":["G6 IPv6 成果 ×3"]}],[{"target":"dc01:389"},{"multiplier":1,"reasons":[]}],[{"target":"https://h/x","data_scale":"large"},{"multiplier":2,"reasons":["G5 数据规模超 1 亿条 / 10TB ×2"]}],[{"target":"https://h/x","data_scale":"knowledge-base"},{"multiplier":2,"reasons":["G5 控制知识库相关系统 ×2"]}],[{"target":"https://h/x","data_scale":"kb"},{"multiplier":2,"reasons":["G5 控制知识库相关系统 ×2"]}],[{"target":"2001:db8::1","data_scale":"large"},{"multiplier":6,"reasons":["G6 IPv6 成果 ×3","G5 数据规模超 1 亿条 / 10TB ×2"]}],[{"target":"https://h/x","ip_version":6},{"multiplier":3,"reasons":["G6 IPv6 成果 ×3"]}],[{"target":"https://h/x","data_scale":"别的"},{"multiplier":1,"reasons":[]}],[{},{"multiplier":1,"reasons":[]}]]
+multi hitPointsOf | [[50,"自带分值优先"],[150],[100],[200],[0],[0]]
+multi evaluateScoreBoard | {"items":[[1,1,"dedup",2,"service","rule:1",1,200,10,null,"oa-a|443"],[2,0,null,null,"service","rule:1",1,200,20,null,"oa-a|443"],[3,0,null,null,"system","rule:2",2,0,5,null,"|"],[4,0,null,null,"none","code:",null,0,0,null,"|"],[5,0,null,null,"target","rule:3",3,0,100,null,"|"]],"caps":[["rule:1",{"rule":1,"cap":200,"used":20,"capped":0}]],"disabled":[3],"meta":["off-code","svc-code","tgt-code"],"names":[[7,"oa-a"]]}
+multi evaluateScoreBoard 复用已读元数据 | {"items":[[1,0,null,null,"service","rule:1",1,0,10,null,"oa-a|443"]],"disabled":[]}

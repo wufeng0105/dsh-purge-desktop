@@ -1,0 +1,33 @@
+id: no-cjk-literal-in-client-src
+language: JavaScript
+severity: error
+message: >-
+  客户端源码里不许出现中文字面量（文案一律走词典键）。改法：在 lib/client-src/i18n.js 里加键，
+  再用 dt("键") / t("键") 取值。
+note: |-
+  为什么只认字符串字面量：判据是「用户可见文案不许硬编码」。JS 里的正则字面量不是文案 ——
+  lib/client-src/dock/env-gate.js 的 /不是红队/g 与 settings/policy-approval.js 的
+  /aborted|abort|超时/i 都在正则里，按字符串字面量判就不会误伤（测量口径也已排除这两处）。
+
+  为什么只锁 string、不锁 template_string：三段 CSS 本身就是模板串，里面的中文是样式注释，
+  不是文案。模板串里的用户可见文案由 cjkCombinedMatches 兜（口径在 scripts/cjk-count.mjs，
+  棘轮在 test/rules-ratchet.test.mjs；现存唯一一处命中是 CONTRACT-6 豁免的 AUTH_LEGAL_HTML）。
+
+  为什么排除 i18n.js：它**就是**词典，那里的中文是数据不是硬编码。
+
+  为什么 files 里同时列 lib/redteam/client.js：演练台的文案与 client-src 是同一发版单元，
+  只锁一半等于没锁。它原本的 1091 处中文在 i18n 迁移轮已全部迁进词典（db6938e 收尾实测
+  cjkCombinedMatches 1091 → 1；提案里出现过的 145 是迁移中间值，不是基线）。
+files:
+  - "lib/client-src/**/*.js"
+  - "lib/redteam/client.js"
+ignores:
+  - "lib/client-src/i18n.js"
+  # AUTH_LEGAL_HTML 所在文件：CONTRACT-6 要求这段声明正文与 docs/drill-auth-legal.html 逐字节相同，
+  # 改一个字符 test/client-evaluates.test.mjs 就红。它的中文是**法律文本本身**，不是 UI 文案，
+  # 按词典迁走会同时破坏「断网也能显示授权窗」与「逐字节相同」两条判据。
+  # 这是本规则唯一豁免，写在规则里，不在源码里加 disable。
+  - "lib/client-src/dock/auth-gate.js"
+rule:
+  kind: string
+  regex: "\\p{Han}"

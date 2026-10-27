@@ -1,0 +1,10 @@
+{"ts":"2026-10-25T18:00:00.000+08:00","event":"apply.start","runId":"apply-20261025T170000Z-bbbb","entry":"http","patches":"3","selected":"3"}
+{"ts":"2026-10-25T18:00:00.000+08:00","event":"apply.patch","runId":"apply-20261025T170000Z-bbbb","entry":"http","id":"1","status":"applied"}
+{"ts":"2026-10-25T18:00:00.000+08:00","event":"apply.patch","runId":"apply-20261025T170000Z-bbbb","entry":"http","id":"46","status":"applied"}
+{"ts":"2026-10-25T18:00:00.000+08:00","event":"apply.patch","runId":"apply-20261025T170000Z-bbbb","entry":"http","id":"29","status":"applied"}
+{"ts":"2026-10-25T18:00:00.000+08:00","event":"apply.end","runId":"apply-20261025T170000Z-bbbb","entry":"http","runEnd":"engine","applied":"3"}
+{"ts":"2026-10-25T19:00:00.000+08:00","event":"apply.start","runId":"apply-20261025T180000Z-cccc","entry":"cli","patches":"1","selected":"1"}
+{"ts":"2026-10-25T19:00:00.000+08:00","event":"apply.patch","runId":"apply-20261025T180000Z-cccc","entry":"cli","id":"1","status":"applied"}
+{"ts":"2026-10-25T19:00:01.000+08:00","event":"apply.end","runId":"apply-20261025T180000Z-cccc","entry":"cli","runEnd":"engine","applied":"1"}
+{"ts":"2026-10-25T18:30:00.000+08:00","event":"apply.start","runId":"apply-20261025T103000Z-ab0d","entry":"cli","patches":"3","selected":"0"}
+{"ts":"2026-10-25T18:30:01.000+08:00","event":"apply.end","runId":"apply-20261025T103000Z-ab0d","entry":"cli","total":"0","applied":"0","failed":"0","runEnd":"engine"}

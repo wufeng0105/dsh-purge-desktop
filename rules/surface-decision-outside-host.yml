@@ -1,0 +1,39 @@
+id: surface-decision-outside-host
+language: JavaScript
+severity: warning
+message: >-
+  surface 判定只允许出现在 lib/surface.js 与 lib/host.js。别处一律用 isDesktop()
+  （已完成，这条规则现在是回归护栏）。
+note: |
+  收口前：13 处组合判定散在 core.js(11) 与 index.js(2)。
+  收口后：0 处，全部改走 surface.js 的 isDesktop。
+
+  为什么收口：surface.js 只有 107 行，但 detectSurface 的 codegraph 影响面是
+  **86 个符号**。分散判定 = 删 web 面时无法从一处判断影响范围（DELETE-1）。
+
+  允许的写法：
+  isDesktop()                       // 探测当前进程
+  isDesktop(options)                // 注入探测输入
+  isDesktop(surfaceString)          // 已算好的 surface 值
+
+  注意本规则用 ast-grep 的 AST 匹配，不是正则 —— `adapterFor(detectSurface())`
+  是嵌套括号，正则的 [^)]* 会在第一个 ) 处截断导致漏检。
+files:
+  - "lib/**/*.js"
+ignores:
+  - "lib/surface.js"
+  - "lib/host.js"
+rule:
+  any:
+    # 形态1：adapterFor(<任意表达式>) === "desktop"
+    - pattern: adapterFor($ARG) === $LIT
+    - pattern: adapterFor($ARG) !== $LIT
+    # 形态2：detectSurface(<可选参数>) === "desktop"
+    - pattern: detectSurface($$$ARGS) === $LIT
+    - pattern: detectSurface($$$ARGS) !== $LIT
+    # 形态3：currentSurface() === "desktop"
+    - pattern: currentSurface($$$ARGS) === $LIT
+    - pattern: currentSurface($$$ARGS) !== $LIT
+constraints:
+  LIT:
+    regex: '^"(desktop|web|gui|tui)"$'

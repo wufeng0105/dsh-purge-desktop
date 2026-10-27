@@ -1,0 +1,11 @@
+{
+  "audit": {
+    "rows": 3,
+    "unresolved": [],
+    "layers": {
+      "prompt": "ok",
+      "code": "ok",
+      "tool": "ok"
+    }
+  }
+}

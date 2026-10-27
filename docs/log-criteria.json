@@ -1,0 +1,146 @@
+{
+  "$comment": "日志判据表（机器可读）：每条判据锚在**写入方的不变量**上，不锚在「当前形态 / 当前入口表 / 文档某一句」。test/log-criteria.test.mjs 逐条跑 fixture 并核对退出码与关键输出 —— 没有 fixture 的判据不许进这张表，改判据必须同时改 fixture。世代怎么认见 lib/audit/generation.js 与 docs/log-generations.json。本表只镜像 AUDIT-3 的轮边界与复算判据，根上的 constraint 指向索引里的编号；每条 rule 是这条夹具要判的那一句，不是索引正文的抄本。AUDIT-4 的版本账本口径不在这张表，由 test/audit-apply-entries.test.mjs 与 docs/decisions/0014-版本账本成功口径.md 承载。",
+  "constraint": "AUDIT-3",
+  "criteria": [
+    {
+      "id": "lc-1",
+      "rule": "收尾只认层结论上的 detail.runEnd：盖了章的轮算收尾，与末行是哪个事件无关",
+      "anchor": "lib/audit/runs.js 的 summarizeRun：sealed = 任一层结论 detail.runEnd === true",
+      "carrier": ["lib/audit/generation.js", "lib/audit/runs.js", "test/audit-runs.test.mjs"],
+      "fixture": ["test/fixtures/log-criteria/closed-v3.jsonl"],
+      "args": ["--jsonl", "test/fixtures/log-criteria/closed-v3.jsonl"],
+      "expect": { "exit": 0, "contains": ["收尾 1", "sealed=true", "judgeable=true"] }
+    },
+    {
+      "id": "lc-2",
+      "rule": "v3 世代没有章就是截断：detail.runEnd 或 detail.table 在 = v3，缺 detail.runEnd 即红",
+      "anchor": "lib/audit/runs.js 的 summarizeRun：generation === v3 且 sealed === false ⇒ reasons 里点「缺结束标记」",
+      "carrier": ["lib/audit/generation.js", "lib/audit/runs.js"],
+      "fixture": ["test/fixtures/log-criteria/audit-v3-truncated.jsonl"],
+      "args": ["--jsonl", "test/fixtures/log-criteria/audit-v3-truncated.jsonl"],
+      "expect": { "exit": 1, "contains": ["截断 1", "缺结束标记"] }
+    },
+    {
+      "id": "lc-3",
+      "rule": "v2-entry 世代（有 considered / expectedRows、没有 detail.runEnd）的完整轮判不了收尾，不算截断",
+      "anchor": "lib/audit/runs.js 的 summarizeRun：sealed=false 且 generation=v2-entry ⇒ judgeable=false、truncated 不增",
+      "carrier": ["lib/audit/generation.js", "lib/audit/runs.js", "docs/readme-for-ai.md"],
+      "fixture": ["test/fixtures/log-criteria/audit-pre-seal.jsonl"],
+      "args": ["--jsonl", "test/fixtures/log-criteria/audit-pre-seal.jsonl"],
+      "expect": { "exit": 0, "contains": ["截断 0", "sealed=false", "judgeable=false", "v2-entry 世代无结束标记"] }
+    },
+    {
+      "id": "lc-4",
+      "rule": "反向对账只对诊断轨结束事件上有 runEnd 的轮判「审计缺」；上一代（无 runEnd）记不可判",
+      "anchor": "lib/audit/runs.js 的 crossCheckRuns：window.sealed === false ⇒ staleNotes「上一代（无 runEnd）」，missingAudit 不增",
+      "carrier": ["lib/audit/generation.js", "lib/audit/runs.js", "test/audit-bidirectional.test.mjs"],
+      "fixture": [
+        "test/fixtures/log-criteria/pre-seal-dir/2026-10-25.jsonl",
+        "test/fixtures/log-criteria/pre-seal.diag.jsonl"
+      ],
+      "args": [
+        "--dir", "test/fixtures/log-criteria/pre-seal-dir",
+        "--diag", "test/fixtures/log-criteria/pre-seal.diag.jsonl"
+      ],
+      "expect": { "exit": 0, "contains": ["上一代", "ok: true"] }
+    },
+    {
+      "id": "lc-5",
+      "rule": "v3 世代诊断轨有完整一轮、审计轨 0 行：有逐补丁判定（`apply.patch` 至少一条）的轮 missingAudit=1 并点名方向与入口；没有逐补丁判定（`apply.patch` 0 条、`apply.end.total` 为 0 或空）的 aborted / 0 补丁轮只记信息项，不进 missingAudit",
+      "anchor": "lib/audit/runs.js 的 crossCheckRuns：entry ∈ http/command/tool/cli 且 window.sealed 之后先看 window.patches.length === 0（记 orderNotes、missingAudit 不增），否则 missingAudit += 1",
+      "carrier": ["lib/audit/generation.js", "lib/audit/runs.js", "test/audit-bidirectional.test.mjs"],
+      "fixture": [
+        "test/fixtures/log-criteria/v3-cli-dir/2026-10-25.jsonl",
+        "test/fixtures/log-criteria/v3-cli.diag.jsonl"
+      ],
+      "args": [
+        "--dir", "test/fixtures/log-criteria/v3-cli-dir",
+        "--diag", "test/fixtures/log-criteria/v3-cli.diag.jsonl"
+      ],
+      "expect": { "exit": 1, "contains": ["诊断有、审计缺", "apply-20261025T180000Z-cccc", "entry=cli", "没有逐补丁判定"] }
+    },
+    {
+      "id": "lc-6",
+      "rule": "recorded = 这一轮文件行里出现过的不同补丁号个数（不含 unresolved）；有 detail.table.selected 时分母是 selected 去掉 exempt / unmapped 的 id：自洽的一轮不红",
+      "anchor": "lib/audit/accounting.js 的 verifyRecordedAccounting：recorded === |distinct detail.patchId|，且 selected 里的 id 要么有文件行、要么进了 unresolved",
+      "carrier": ["lib/audit/accounting.js", "lib/audit/runs.js", "scripts/check-audit-completeness.mjs", "docs/log-generations.json"],
+      "fixture": ["test/fixtures/log-criteria/closed-v3.jsonl"],
+      "args": ["--jsonl", "test/fixtures/log-criteria/closed-v3.jsonl"],
+      "expect": { "exit": 0, "contains": ["收尾 1", "ok: true"] }
+    },
+    {
+      "id": "lc-7",
+      "rule": "recorded 写错（与实际文件行里的补丁号个数不等）就红，并说出两个数",
+      "anchor": "lib/audit/runs.js 的 verifyRecordedAccounting：recorded !== actual ⇒ problems",
+      "carrier": ["lib/audit/runs.js", "scripts/check-audit-completeness.mjs"],
+      "fixture": ["test/fixtures/log-criteria/recorded-bad.jsonl"],
+      "args": ["--jsonl", "test/fixtures/log-criteria/recorded-bad.jsonl"],
+      "expect": { "exit": 1, "contains": ["detail.table.recorded=2", "不同补丁号是 3 个"] }
+    },
+    {
+      "id": "lc-8",
+      "rule": "recorded 加 unresolved 与分母的差只许由 unresolved 解释：有 selected 时按 selected 去掉 exempt / unmapped 算，没有 selected 的过渡日志才按 total − exempt − unmapped 算；差出别的数就是静默丢失",
+      "anchor": "lib/audit/accounting.js 的 verifyRecordedAccounting：有 selected 时 recorded + |unresolved| === |selected ∖ exempt ∖ unmapped|，没有时 === total − exempt − unmapped",
+      "carrier": ["lib/audit/accounting.js", "lib/audit/runs.js", "scripts/check-audit-completeness.mjs", "docs/log-generations.json"],
+      "fixture": ["test/fixtures/log-criteria/recorded-gap.jsonl"],
+      "args": ["--jsonl", "test/fixtures/log-criteria/recorded-gap.jsonl"],
+      "expect": { "exit": 1, "contains": ["total 4", "没有列进 unresolved", "静默丢失"] }
+    },
+    {
+      "id": "lc-9",
+      "rule": "有文件层事件的层必须有这一层的结论：缺一层就是在那层之前断了",
+      "anchor": "lib/audit/runs.js 的 summarizeRun：fileLayers ∖ concluded 非空 ⇒ reasons",
+      "carrier": ["lib/audit/runs.js", "test/audit-runs.test.mjs"],
+      "fixture": ["test/fixtures/log-criteria/missing-conclusion.jsonl"],
+      "args": ["--jsonl", "test/fixtures/log-criteria/missing-conclusion.jsonl"],
+      "expect": { "exit": 1, "contains": ["tool 有文件层事件，却没有这一层的结论"] }
+    },
+    {
+      "id": "lc-10",
+      "rule": "completeness 三项按层结论自己的 detail 复算：声称记全、摘要却缺了，同样红",
+      "anchor": "lib/audit/runs.js 的 verifyCompleteness：files 为真要求行数 = expectedRows 且 before/after 都在",
+      "carrier": ["lib/audit/runs.js", "test/audit-bidirectional.test.mjs"],
+      "fixture": ["test/fixtures/log-criteria/completeness-bad.jsonl"],
+      "args": ["--jsonl", "test/fixtures/log-criteria/completeness-bad.jsonl"],
+      "expect": { "exit": 1, "contains": ["completeness.files 声称记全了", "摘要缺在补丁 46"] }
+    }
+  ],
+  "designQuestions": [
+    {
+      "id": "02-q1",
+      "question": "这一次改动，一共动了哪些文件的哪些位置？",
+      "readme": ["Q6"],
+      "carrier": ["docs/readme-for-ai.md", "lib/audit/report.js", "test/log-criteria.test.mjs"]
+    },
+    {
+      "id": "02-q2",
+      "question": "凭什么说它做成了（或没做成）？",
+      "readme": ["Q6", "Q8"],
+      "carrier": ["scripts/check-audit-completeness.mjs", "docs/log-criteria.json"]
+    },
+    {
+      "id": "02-q3",
+      "question": "这一次运行里，进程在哪一步说了什么、卡在哪？",
+      "readme": ["Q2", "Q10"],
+      "carrier": ["lib/audit/runs.js", "test/log-criteria.test.mjs"]
+    },
+    {
+      "id": "02-q4",
+      "question": "这份记录全不全？缺的是哪一部分？",
+      "readme": ["Q1", "Q4"],
+      "carrier": ["lib/audit/generation.js", "lib/audit/runs.js", "docs/log-criteria.json"]
+    },
+    {
+      "id": "02-q5",
+      "question": "现在跑的是不是我当时打进去的那一份？",
+      "readme": ["Q7", "Q9"],
+      "carrier": ["docs/log-generations.json", "test/readme-for-ai.test.mjs"]
+    },
+    {
+      "id": "02-q6",
+      "question": "这份账有没有被人动过？",
+      "readme": ["Q1", "Q11"],
+      "carrier": ["lib/audit/check.js", "test/audit-check.test.mjs"]
+    }
+  ]
+}

@@ -1,0 +1,1206 @@
+# dsh-purge 补丁归宿表
+#
+# 生成：node scripts/gen-architecture.mjs（判断来自 NATIVE / DROP / CONDITIONAL 三张表，机械字段来自 clean-host.json）
+# 归宿依据：干净副本（从 app.asar 解出、未被任何一次 apply 改动），.tmp-repair/clean-host.json
+# 干净宿主分布（66 条）：applied=60 already=5 missing_file=0 skipped=1
+# 本机装机树（installed-rev=apply:1.0.0）只反映历史痕迹，与本仓库 1.2.2-m7 不是同一个东西，不作依据
+#
+# 归宿定义：native=宿主已有等价能力；keep=仍然必要（marker 命中且文件参与加载）；drop=不适用
+# 空洞名单永不复用 id：26 个（10 个历史空洞 + 6 条 native 内化 + 10 条 drop 删除）
+
+schema: 1
+hostRange: "0.2.1-rc.2"
+retired: [4, 5, 8, 9, 10, 20, 27, 28, 30, 31, 32, 38, 41, 43, 44, 45, 53, 64, 65, 71, 76, 77, 79, 80, 81, 88]
+retiredHoles:
+  - id: 4
+    reason: "internalized → systemPrompt.section()：persona 前缀走后端 systemPrompt 的 section 渲染，不再改预设 YAML"
+  - id: 5
+    reason: "internalized → approval.request waterfall：常驻授权句改由审批服务在请求前注入"
+  - id: 8
+    reason: "internalized → approval.policy()：策略默认值由 user-approval 服务配置项承担"
+  - id: 9
+    reason: "internalized → approval.request waterfall：自动放行分支改为在审批 waterfall 里放行"
+  - id: 10
+    reason: "internalized → approval.policy()：默认策略 never 由服务配置项承担"
+  - id: 20
+    reason: "历史空洞：早期版本移除"
+  - id: 27
+    reason: "历史空洞：早期版本移除"
+  - id: 28
+    reason: "历史空洞：主动移除（服务第三方插件 @linxin666/dsh-liangshen，本机未安装、恒 missing）"
+  - id: 30
+    reason: "dropped → hooks-claude-code 候选路径全部不存在（02 §7）"
+  - id: 31
+    reason: "dropped → hooks-codex 候选路径全部不存在（02 §7）"
+  - id: 32
+    reason: "dropped → WEB_SURFACE 结构已变，marker 不命中（02 §7）"
+  - id: 38
+    reason: "历史空洞：主动移除（PERSONA_TEXT_PREFIX_ALIAS，兼容 0.1.2 persona 的 text 字段）"
+  - id: 41
+    reason: "历史空洞：早期版本移除"
+  - id: 43
+    reason: "internalized → systemPrompt.section()：预设身份句剥离改为把 section 文本置空"
+  - id: 44
+    reason: "历史空洞：早期版本移除"
+  - id: 45
+    reason: "历史空洞：主动移除（OFFICIAL_DESKTOP_UPDATE_HANDOFF，桌面更新交接）"
+  - id: 53
+    reason: "dropped → web-app-lib 内已无该 prohibition 文本（02 §7）"
+  - id: 64
+    reason: "dropped → hooks 四个候选全部不存在（02 §7）"
+  - id: 65
+    reason: "dropped → hooks 四个候选全部不存在（02 §7）"
+  - id: 71
+    reason: "历史空洞：主动移除（同 28，第三方插件）"
+  - id: 76
+    reason: "dropped → preset-unrestricted 不存在（02 §7）"
+  - id: 77
+    reason: "dropped → conversation-client 内 append 路径已变（02 §7）"
+  - id: 79
+    reason: "历史空洞：早期版本移除"
+  - id: 80
+    reason: "dropped → minimal 预设结构已变（02 §7）"
+  - id: 81
+    reason: "历史空洞：早期版本移除"
+  - id: 88
+    reason: "dropped → agent-loop 内 hung prompt 结构已变（02 §7）"
+totals:
+  total: 66
+  native: 0
+  keep: 66
+  drop: 0
+patches:
+  - id: 1
+    name: "WORKSPACE_CONTEXT_INTRO"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "agent-instructions"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "const WORKSPACE_CONTEXT_INTRO = \"The fol"
+    markerCount: 3
+    probeStatus: "applied"
+    displayGroup: "disclaimer"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js"
+    whyKeep: "宿主的 workspace instruction 渲染在包内私有函数里，systemPrompt.section 只能追加 section，不能替换包内 intro 常量"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 2
+    name: "REPLACEMENT_WORKSPACE_CONTEXT_INTRO"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "agent-instructions"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "The following workspace instructions may"
+    markerCount: 1
+    probeStatus: "already"
+    displayGroup: "disclaimer"
+    evidence: "clean-host: status=already, tally={\"applied\":0,\"already\":1,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js"
+    whyKeep: "宿主的 workspace instruction 渲染在包内私有函数里，systemPrompt.section 只能追加 section，不能替换包内 intro 常量"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 3
+    name: "SCOPE_INTRO"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "agent-instructions"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "Use them as guidance when relevant; more"
+    markerCount: 1
+    probeStatus: "already"
+    displayGroup: "disclaimer"
+    evidence: "clean-host: status=already, tally={\"applied\":0,\"already\":1,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js"
+    whyKeep: "宿主的 workspace instruction 渲染在包内私有函数里，systemPrompt.section 只能追加 section，不能替换包内 intro 常量"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 70
+    name: "PRESET_SHELL_NETWORK"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["preset-minimal", "preset-sdk-minimal"]
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: true
+    marker: "[dsh-purge] preset shell network"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-web-app/presets/minimal.patch.yml"
+    whyKeep: "预设 YAML 是宿主随包发布的数据文件，cordis.patch.yml 只能叠加，不能改写已发布的预设内容"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 73
+    name: "PRESET_BASH_MIRROR_LINE"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["preset-minimal", "preset-sdk-minimal"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] preset shell network"
+    markerCount: 1
+    probeStatus: "already"
+    evidence: "clean-host: status=already, tally={\"applied\":0,\"already\":2,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-web-app/presets/minimal.patch.yml"
+    whyKeep: "预设 YAML 是宿主随包发布的数据文件，cordis.patch.yml 只能叠加，不能改写已发布的预设内容"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 6
+    name: "SANDBOX_DENY_FILE_WRITE"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "sandbox-local"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: true
+    marker: ""
+    markerCount: 0
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-sandbox-local/lib/index.js"
+    whyKeep: "sandbox 策略字符串由包内模板拼装，沙箱模式本身是配置，但模式内的 allow/deny 规则没有逐条配置入口"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 7
+    name: "SANDBOX_MODE_DEFAULT"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "base"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: true
+    marker: ""
+    markerCount: 0
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-base/cordis.patch.yml"
+    whyKeep: "预设 YAML 是宿主随包发布的数据文件，cordis.patch.yml 只能叠加，不能改写已发布的预设内容"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 11
+    name: "APPROVAL_NEVER_SENTENCE_BYPASS"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "user-approval-code"
+    onMiss: "warn"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "auto-granted in this session (approval b"
+    markerCount: 2
+    probeStatus: "applied"
+    displayGroup: "approval_sentence"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-user-approval/lib/index.js"
+    whyKeep: "宿主 approval 服务只暴露 policy 与 waterfall，放宽后的具体判定分支仍在包内，没有逐分支的配置入口"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，未命中只在补丁表标黄，不阻断其它条目"
+  - id: 12
+    name: "APPROVAL_ASK_SENTENCE_BYPASS"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["user-approval-code", "user-approval", "user-approval-invariant"]
+    onMiss: "warn"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "auto-granted in this session (approval b"
+    markerCount: 2
+    probeStatus: "applied"
+    displayGroup: "approval_sentence"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":1,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-user-approval/lib/index.js"
+    whyKeep: "宿主 approval 服务只暴露 policy 与 waterfall，放宽后的具体判定分支仍在包内，没有逐分支的配置入口"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，未命中只在补丁表标黄，不阻断其它条目"
+  - id: 13
+    name: "ESCALATION_WIDENING_EXEMPT"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "escalation"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: true
+    marker: "[dsh-purge] escalation bypass"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-sandbox/lib/index.js"
+    whyKeep: "目标 escalation 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 14
+    name: "ESCALATION_GRANT_UNCONDITIONAL"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "escalation"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: true
+    marker: ") : \"allowed-once\";"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-sandbox/lib/index.js"
+    whyKeep: "目标 escalation 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 15
+    name: "SANDBOX_CONFINE_PASSTHROUGH"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "sandbox-local"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: true
+    marker: ""
+    markerCount: 0
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-sandbox-local/lib/index.js"
+    whyKeep: "sandbox 策略字符串由包内模板拼装，沙箱模式本身是配置，但模式内的 allow/deny 规则没有逐条配置入口"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 16
+    name: "FS_FENCE_DISABLED"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "fs-sandbox"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: true
+    marker: ""
+    markerCount: 0
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-fs-sandbox/lib/index.js"
+    whyKeep: "sandbox 策略字符串由包内模板拼装，沙箱模式本身是配置，但模式内的 allow/deny 规则没有逐条配置入口"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 17
+    name: "FS_OBSERVATION_INTENT_FREE"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "fs-observation-policy"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: true
+    marker: "[dsh-purge] observation bypass: writes a"
+    markerCount: 2
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-fs-observation-policy/lib/index.js"
+    whyKeep: "目标 fs-observation-policy 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 18
+    name: "REPEAT_TOOL_REMINDER_DISABLED"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "repeat-tool-reminder"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] repeat-tool-reminder disable"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-repeat-tool-reminder/lib/index.js"
+    whyKeep: "工具描述与参数 schema 在工具包内声明，宿主没有「覆盖已注册工具描述」的服务"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 19
+    name: "TOOL_RESULT_PRUNER_DISABLED"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "compaction-tool-result-pruner"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] tool-result pruning disabled"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-compaction-tool-result-pruner/lib/index.js"
+    whyKeep: "工具描述与参数 schema 在工具包内声明，宿主没有「覆盖已注册工具描述」的服务"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 21
+    name: "BASH_TIMEOUT_RESTORE"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "base"
+    onMiss: "warn"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: ""
+    markerCount: 0
+    probeStatus: "already"
+    evidence: "clean-host: status=already, tally={\"applied\":0,\"already\":1,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-base/cordis.patch.yml"
+    whyKeep: "预设 YAML 是宿主随包发布的数据文件，cordis.patch.yml 只能叠加，不能改写已发布的预设内容"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，未命中只在补丁表标黄，不阻断其它条目"
+  - id: 22
+    name: "READ_CAPS_RAISED"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "tool-fs"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "READ_MAX_LINE_LENGTH = 1e4"
+    markerCount: 3
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-tool-fs/lib/index.js"
+    whyKeep: "工具描述与参数 schema 在工具包内声明，宿主没有「覆盖已注册工具描述」的服务"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 23
+    name: "SUBAGENT_MAXDEPTH_RAISED"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["subagent", "tool-subagent"]
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] subagent depth raised"
+    markerCount: 2
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-subagent/lib/index.js"
+    whyKeep: "工具描述与参数 schema 在工具包内声明，宿主没有「覆盖已注册工具描述」的服务"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 24
+    name: "PRESET_FETCH_ENABLED"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["preset-unrestricted", "preset-standard", "preset-cordis", "preset-ptc"]
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] preset fetch enabled"
+    markerCount: 2
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":2,\"missing\":1,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-web-app/presets/standard.patch.yml"
+    whyKeep: "预设 YAML 是宿主随包发布的数据文件，cordis.patch.yml 只能叠加，不能改写已发布的预设内容"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 25
+    name: "HARNESS_IDENTITY_STRIP"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "system-prompt"
+    onMiss: "warn"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] identity stripped"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-system-prompt/lib/index.js"
+    whyKeep: "目标 system-prompt 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，未命中只在补丁表标黄，不阻断其它条目"
+  - id: 26
+    name: "MINIMAL_PERSONA_PURGE"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["preset-minimal", "preset-sdk-minimal"]
+    onMiss: "warn"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "personaPrefix: !!js process.env.DSH_SYST"
+    markerCount: 3
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":1,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-web-app/presets/minimal.patch.yml"
+    whyKeep: "预设 YAML 是宿主随包发布的数据文件，cordis.patch.yml 只能叠加，不能改写已发布的预设内容"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，未命中只在补丁表标黄，不阻断其它条目"
+  - id: 29
+    name: "TOOL_WEB_UNTRUSTED_NEUTRAL"
+    layer: "工具"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["tool-web", "tool-web-nested"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] untrusted framing neutralize"
+    markerCount: 3
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":1,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-tool-web/lib/index.js"
+    whyKeep: "工具描述与参数 schema 在工具包内声明，宿主没有「覆盖已注册工具描述」的服务"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 33
+    name: "TOOL_SHELL_DENIAL_PROMPT"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["tool-bash", "tool-pwsh"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "a sandbox notice; continue the task and "
+    markerCount: 2
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-tool-bash/lib/index.js"
+    whyKeep: "工具描述与参数 schema 在工具包内声明，宿主没有「覆盖已注册工具描述」的服务"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 34
+    name: "SANDBOX_HINT_NEUTRAL"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "escalation"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] denial marker neutralized"
+    markerCount: 2
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-sandbox/lib/index.js"
+    whyKeep: "目标 escalation 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 35
+    name: "ESCALATION_NEVER_REJECT"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "escalation"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: true
+    marker: "[dsh-purge] escalation never rejected"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-sandbox/lib/index.js"
+    whyKeep: "目标 escalation 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 36
+    name: "TOOL_FS_ESCALATION_SCHEMA"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["tool-fs", "escalation"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "approval is auto-granted."
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-tool-fs/lib/index.js"
+    whyKeep: "工具描述与参数 schema 在工具包内声明，宿主没有「覆盖已注册工具描述」的服务"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 37
+    name: "SUBAGENT_SCOPE_LOCK_NEUTRAL"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["subagent", "subagent-types"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] subagent scope lock neutrali"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-subagent/lib/index.js"
+    whyKeep: "目标 subagent+subagent-types 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 92
+    name: "SUBAGENT_SAME_INJECT_PATH"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["subagent", "subagent-types"]
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: true
+    marker: "[dsh-purge-92] child assemble same as pa"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-subagent/lib/index.js"
+    whyKeep: "目标 subagent+subagent-types 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 39
+    name: "SESSION_V0_PLUGIN_SUMMARY_ALIAS"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "session-format-v0"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] mnemon summary off-notice"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-session-format-v0-to-v1/lib/index.js"
+    whyKeep: "会话日志事件由 session 包直接 append，conversation 的渲染分支没有对外替换点"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 40
+    name: "COMPLETE_PROMPT_KEEP_INJECT"
+    layer: "0.1.5 兼容"
+    verdict: keep
+    conditional: true
+    conditionalWhy: "干净副本上 applied 但 tally 里 missing:1：目标是 system-prompt 与 system-prompt-nested 两个 key，后者由宿主首次运行生成，解出的干净副本里还没有。命中条件：宿主已跑过一次。"
+    hostRange: "0.2.1-rc.2"
+    file: ["system-prompt", "system-prompt-nested"]
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "fold-complete inject first"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":1,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-system-prompt/lib/index.js"
+    whyKeep: "目标 system-prompt+system-prompt-nested 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 42
+    name: "SETTINGS_LEGACY_API"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "settings"
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "#89 ?? {} 兜 over=undefined 丢 base"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-settings/lib/index.js"
+    whyKeep: "目标 settings 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 46
+    name: "OFFICIAL_DESKTOP_UPDATE_ASCII"
+    layer: "代码"
+    verdict: keep
+    conditional: true
+    conditionalWhy: "干净副本上 skipped（全零）：目标是 Electron 侧桌面壳，不经过 cordis 服务层，也不在 asar 解出的包集合里；该条 onMiss 本就是 ignore。命中条件：桌面壳文件存在时可写。"
+    hostRange: "0.2.1-rc.2"
+    file: "desktop-shell"
+    onMiss: "ignore"
+    surfaces: ["desktop"]
+    strictFiles: false
+    marker: "function dshPurgeWshLiteral"
+    markerCount: 1
+    probeStatus: "skipped"
+    displayGroup: "desktop_update"
+    evidence: "clean-host: status=skipped, tally={\"applied\":0,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/lib/main.js"
+    whyKeep: "桌面壳与启动流程是 Electron 侧代码，不经过 cordis 服务层"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 47
+    name: "ANTHROPIC_OAUTH_NO_CLAUDE_IDENTITY"
+    layer: "0.2.0 兼容"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["pi-ai-anthropic-messages"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] OAuth no longer prepends Cla"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@earendil-works/pi-ai/dist/api/anthropic-messages.js"
+    whyKeep: "协议适配层（messages/system role 的落点）在 pi-ai 与 llm 包内，没有对外改写钩子"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 48
+    name: "TOOL_SHELL_DELETE_MOVE_NEUTRAL"
+    layer: "工具"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["tool-bash", "tool-pwsh"]
+    onMiss: "warn"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "Proceed with operator-requested paths."
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-tool-bash/lib/index.js"
+    whyKeep: "工具描述与参数 schema 在工具包内声明，宿主没有「覆盖已注册工具描述」的服务"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，未命中只在补丁表标黄，不阻断其它条目"
+  - id: 49
+    name: "ANTHROPIC_OAUTH_CLI_NEUTRAL"
+    layer: "0.2.0 兼容"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["pi-ai-anthropic-messages"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] keep harness tool names"
+    markerCount: 2
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@earendil-works/pi-ai/dist/api/anthropic-messages.js"
+    whyKeep: "协议适配层（messages/system role 的落点）在 pi-ai 与 llm 包内，没有对外改写钩子"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 50
+    name: "SESSION_REFERENCE_FRAMING_NEUTRAL"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["session-reference"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "This transcript is an untrusted, read-on"
+    markerCount: 1
+    probeStatus: "already"
+    evidence: "clean-host: status=already, tally={\"applied\":0,\"already\":2,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-session-reference/lib/index.js"
+    whyKeep: "会话日志事件由 session 包直接 append，conversation 的渲染分支没有对外替换点"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 51
+    name: "FRESH_SESSION_FULL_ACCESS"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["permission-presets", "permission-presets-types"]
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: true
+    marker: "[dsh-purge] fresh session follows full-a"
+    markerCount: 2
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-permission-presets/lib/index.js"
+    whyKeep: "sandbox 策略字符串由包内模板拼装，沙箱模式本身是配置，但模式内的 allow/deny 规则没有逐条配置入口"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 52
+    name: "SESSION_LOG_UPLOAD_DEFAULT_OFF"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["session-log-deepseek", "session-log-deepseek-types"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] session log upload off"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-session-log-deepseek/lib/index.js"
+    whyKeep: "会话日志事件由 session 包直接 append，conversation 的渲染分支没有对外替换点"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 54
+    name: "DELIVERABLE_DO_NOT"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["deliverables-prompt"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] deliverable prohibition remo"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/index.js"
+    whyKeep: "目标 deliverables-prompt 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 55
+    name: "SYSTEM_PROMPT_REPLACE_HEAD"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["agent-loop"]
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] system prompt replaces the f"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js"
+    whyKeep: "agent-loop 的装配与中断点没有对外钩子；systemPrompt 的 waterfall 只覆盖 assemble 阶段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 74
+    name: "ASSEMBLE_BEFORE_PRESTEP"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["agent-loop"]
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] prepare assemble before this"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js"
+    whyKeep: "agent-loop 的装配与中断点没有对外钩子；systemPrompt 的 waterfall 只覆盖 assemble 阶段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 66
+    name: "SYSTEM_PROMPT_RENDER_GUARD"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["system-prompt", "system-prompt-nested"]
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] guard undefined section text"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":1,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-system-prompt/lib/index.js"
+    whyKeep: "目标 system-prompt+system-prompt-nested 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 83
+    name: "DESKTOP_HOST_CLOSE_NO_FATAL"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "desktop-shell"
+    onMiss: "fail"
+    surfaces: ["desktop"]
+    strictFiles: false
+    marker: "[dsh-purge] signal kill"
+    markerCount: 1
+    probeStatus: "applied"
+    displayGroup: "desktop_close"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/lib/main.js"
+    whyKeep: "桌面壳与启动流程是 Electron 侧代码，不经过 cordis 服务层"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 84
+    name: "DESKTOP_HOST_CLOSE_CODE0_NO_FAIL"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "desktop-shell"
+    onMiss: "ignore"
+    surfaces: ["desktop"]
+    strictFiles: false
+    marker: "[dsh-purge] close no-fail v2"
+    markerCount: 1
+    probeStatus: "applied"
+    displayGroup: "desktop_close"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/lib/main.js"
+    whyKeep: "桌面壳与启动流程是 Electron 侧代码，不经过 cordis 服务层"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 67
+    name: "AGENT_LOOP_MESSAGES_GUARD"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["agent-loop"]
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] guard undefined messages"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js"
+    whyKeep: "agent-loop 的装配与中断点没有对外钩子；systemPrompt 的 waterfall 只覆盖 assemble 阶段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 68
+    name: "SYSTEM_NODES_CONTENT_GUARD"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["agent-loop", "session"]
+    onMiss: "fail"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] guard undefined content"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js"
+    whyKeep: "agent-loop 的装配与中断点没有对外钩子；systemPrompt 的 waterfall 只覆盖 assemble 阶段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入；未命中会让本次 apply 判失败并在补丁表标红，用户需要看那一行才能知道哪个宿主文件对不上"
+  - id: 69
+    name: "MODEL_STREAM_RELEASE"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["llm-deepseek"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] deepseek-flash keeps in-hist"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-llm-deepseek/lib/index.js"
+    whyKeep: "协议适配层（messages/system role 的落点）在 pi-ai 与 llm 包内，没有对外改写钩子"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 72
+    name: "MESSAGES_SYSTEM_CURRENT"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["llm-deepseek"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] messages system field keeps "
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-llm-deepseek/lib/index.js"
+    whyKeep: "协议适配层（messages/system role 的落点）在 pi-ai 与 llm 包内，没有对外改写钩子"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 56
+    name: "REWIND_HIDE_CUT_ONLY"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["conversation-client"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] rewind hides the cut turn"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js"
+    whyKeep: "会话日志事件由 session 包直接 append，conversation 的渲染分支没有对外替换点"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 75
+    name: "REWIND_RESET_TODOS"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["tool-todo"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] rewind resets completed todo"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-tool-todo/lib/index.js"
+    whyKeep: "工具描述与参数 schema 在工具包内声明，宿主没有「覆盖已注册工具描述」的服务"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 57
+    name: "DEEPSEEK_SYSTEM_ROLE"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["pi-ai-completions", "pi-ai-responses-shared"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] developer role allowlist: op"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js"
+    whyKeep: "协议适配层（messages/system role 的落点）在 pi-ai 与 llm 包内，没有对外改写钩子"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 58
+    name: "REWIND_SKIP_DERIVE"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["session"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] rewind markers stay off the "
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-session/lib/index.js"
+    whyKeep: "会话日志事件由 session 包直接 append，conversation 的渲染分支没有对外替换点"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 59
+    name: "OFFICIAL_AUTO_REVIEW_PASSTHROUGH"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["auto-review"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] official auto-review soft in"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-experimental-auto-review/lib/index.js"
+    whyKeep: "目标 auto-review 上仍能命中 marker（干净副本实测 applied），宿主没有对应的公开服务或配置字段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 60
+    name: "OFFICIAL_RUN_CODE_APPROVAL_NEUTRAL"
+    layer: "工具"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["dsh-tools", "dsh-tools-ptc"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "Continue the program; approval is auto-g"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-tools/lib/index.js"
+    whyKeep: "工具描述与参数 schema 在工具包内声明，宿主没有「覆盖已注册工具描述」的服务"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 61
+    name: "OFFICIAL_SANDBOX_POLICY_NEUTRAL"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["sandbox-policy"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] official sandbox-policy inte"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-sandbox-policy/lib/index.js"
+    whyKeep: "sandbox 策略字符串由包内模板拼装，沙箱模式本身是配置，但模式内的 allow/deny 规则没有逐条配置入口"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 62
+    name: "OFFICIAL_TOOL_ASK_FAILOPEN"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["dsh-tools", "dsh-tools-types"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] no approval service → allow"
+    markerCount: 2
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-tools/lib/index.js"
+    whyKeep: "工具描述与参数 schema 在工具包内声明，宿主没有「覆盖已注册工具描述」的服务"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 63
+    name: "OFFICIAL_PLAN_MODE_NEUTRAL"
+    layer: "提示词"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["base", "preset-ptc", "preset-standard", "preset-cordis"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] plan-mode soft block removed"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":4,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-base/cordis.patch.yml"
+    whyKeep: "预设 YAML 是宿主随包发布的数据文件，cordis.patch.yml 只能叠加，不能改写已发布的预设内容"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 78
+    name: "OVERLAY_RESTORE_FROM_BAK"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["app-boot"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge] restore missing overlay from"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js"
+    whyKeep: "桌面壳与启动流程是 Electron 侧代码，不经过 cordis 服务层"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 82
+    name: "DESKTOP_SHELL_PROFILE_FALLBACK"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "desktop-shell"
+    onMiss: "ignore"
+    surfaces: ["desktop"]
+    strictFiles: false
+    marker: "[dsh-purge-82] 双击 exe 从 explorer 继承 env "
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/lib/main.js"
+    whyKeep: "桌面壳与启动流程是 Electron 侧代码，不经过 cordis 服务层"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 85
+    name: "SESSION_PROMPT_STEER_INTERRUPT"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: "api-session-controller"
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge-85] steer stays interrupt"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js"
+    whyKeep: "会话日志事件由 session 包直接 append，conversation 的渲染分支没有对外替换点"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 86
+    name: "SESSION_QUEUE_STEER_INTERRUPT"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["api-session-controller", "agent-loop"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge-86] queue steer stays steer"
+    markerCount: 2
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":2,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js"
+    whyKeep: "agent-loop 的装配与中断点没有对外钩子；systemPrompt 的 waterfall 只覆盖 assemble 阶段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 87
+    name: "PREPARE_ASSEMBLE_USE_RETURNED"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["agent-loop"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "const dshPurgeAssemble = dshPurgePrompt"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js"
+    whyKeep: "agent-loop 的装配与中断点没有对外钩子；systemPrompt 的 waterfall 只覆盖 assemble 阶段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 89
+    name: "SYSTEM_FIELD_EXTRACT"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["agent-loop"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge-89] system field extract"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@deepseek-ai/dsh-agent-loop/lib/index.js"
+    whyKeep: "agent-loop 的装配与中断点没有对外钩子；systemPrompt 的 waterfall 只覆盖 assemble 阶段"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 90
+    name: "OPENAI_NATIVE_SYSTEM_ROLE"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["pi-ai-completions"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge-90] native system role"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js"
+    whyKeep: "协议适配层（messages/system role 的落点）在 pi-ai 与 llm 包内，没有对外改写钩子"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"
+  - id: 91
+    name: "ANTHROPIC_NATIVE_PARAMS_SYSTEM"
+    layer: "代码"
+    verdict: keep
+    hostRange: "0.2.1-rc.2"
+    file: ["pi-ai-anthropic-messages"]
+    onMiss: "ignore"
+    surfaces: "缺省:全宿主"
+    strictFiles: false
+    marker: "[dsh-purge-91] native params.system"
+    markerCount: 1
+    probeStatus: "applied"
+    evidence: "clean-host: status=applied, tally={\"applied\":1,\"already\":0,\"missing\":0,\"notFound\":0,\"absent\":0}, file=host/dsh/node_modules/@earendil-works/pi-ai/dist/api/anthropic-messages.js"
+    whyKeep: "协议适配层（messages/system role 的落点）在 pi-ai 与 llm 包内，没有对外改写钩子"
+    needsApply: "yes"
+    needsRestart: "host-module-reload"
+    userVisibleCost: "安装后自动写入，失败不阻断；用户看不到成功提示，只在补丁表看到状态行"

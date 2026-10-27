@@ -1,0 +1,4 @@
+{"ts":"2026-10-26T03:35:20.000Z","event":"apply.start","patches":"66","selected":"66","forApply":"true","hostVersion":"","dshTarget":"0.0.0-fixture","entry":"cli","runId":"apply-20261026T033520Z-b970","sealed":"false"}
+{"ts":"2026-10-26T03:35:21.000Z","event":"apply.hosts","count":"0","bases":"","entry":"cli","runId":"apply-20261026T033520Z-b970","sealed":"false"}
+{"ts":"2026-10-26T03:35:24.000Z","event":"apply.end","hosts":"0","total":"0","applied":"0","already":"0","failed":"0","readError":"0","writeError":"0","notFound":"0","missingFile":"0","ms":"3715","pendingRestart":"false","asarSealed":"false","runEnd":"engine","entry":"cli","runId":"apply-20261026T033520Z-b970","sealed":"false"}
+{"ts":"2026-10-26T03:35:24.000Z","event":"install.record","ok":"true","files":"0","method":"unknown","path":"<DSH_HOME>/dsh-purge/install-state.json","entry":"cli","runId":"apply-20261026T033520Z-b970","sealed":"false"}

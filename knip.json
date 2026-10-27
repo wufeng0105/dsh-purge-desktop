@@ -1,0 +1,40 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "lib/index.js",
+    "bin/dsh-purge.js",
+    "lib/redteam/index.js",
+    "lib/redteam/store.js",
+    "lib/redteam/ui.js",
+    "lib/redteam/tools.js",
+    "scripts/*.mjs"
+  ],
+  "project": ["lib/**/*.js", "bin/**/*.js", "scripts/**/*.mjs"],
+  "ignore": [
+    "client.js",
+    "lib/redteam/client.js",
+    "lib/restart-desktop.js",
+    "lib/reapply-cli.js",
+    "lib/child-process-hide.mjs",
+    "lib/client-src/**"
+  ],
+  "ignoreDependencies": [
+    "@deepseek-ai/dsh-agent-loop",
+    "@deepseek-ai/dsh-llm",
+    "@ast-grep/cli",
+    "dependency-cruiser"
+  ],
+  "ignoreBinaries": ["schtasks", "cscript.exe", "wscript.exe", "dsh", "pnpm"],
+  "ignoreExportsUsedInFile": true,
+  "rules": {
+    "files": "error",
+    "exports": "error",
+    "types": "error",
+    "duplicates": "error",
+    "binaries": "error",
+    "unresolved": "error",
+    "dependencies": "error",
+    "devDependencies": "error",
+    "unlisted": "error"
+  }
+}
